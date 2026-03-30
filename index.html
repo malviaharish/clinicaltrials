@@ -58,7 +58,7 @@
     position: relative; z-index: 1;
     max-width: 100%;
     margin: 0 auto;
-    padding: 0 40px 80px;
+    padding: 0 clamp(16px, 3vw, 40px) 80px;
   }
 
   /* ---- HEADER ---- */
@@ -330,34 +330,50 @@
     border: 1px solid var(--border);
     background: #ffffff;
     box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+    /* Ensures the wrap itself never causes outer page scroll */
+    max-width: 100%;
   }
 
+  /* ---- TABLE UPGRADES FOR CLARITY ---- */
   table {
     width: 100%;
+    min-width: 0;
     border-collapse: collapse;
+    /* Use fixed layout so column widths are controlled */
+    table-layout: fixed;
     font-size: 13px;
   }
 
+  /* Column width distribution (totals 100%) */
+  table colgroup col:nth-child(1) { width: 44px; }       /* expand btn */
+  table colgroup col:nth-child(2) { width: 13%; }        /* NCT ID */
+  table colgroup col:nth-child(3) { width: auto; }       /* Title – takes remaining space */
+  table colgroup col:nth-child(4) { width: 16%; }        /* Status */
+  table colgroup col:nth-child(5) { width: 7%; }         /* Year */
+  table colgroup col:nth-child(6) { width: 15%; }        /* Keyword */
+
   thead th {
     background: #f8fafc;
-    padding: 14px 16px;
+    padding: 12px 12px;
     text-align: left;
     font-size: 11px;
     text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: #475569;
+    letter-spacing: 0.05em;
+    color: #334155;
     font-weight: 700;
     white-space: nowrap;
     cursor: pointer;
     user-select: none;
     transition: color 0.15s, background 0.15s;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 2px solid var(--border);
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   thead th:hover { color: var(--accent); background: #f1f5f9; }
 
   tbody tr {
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid #e2e8f0;
     transition: background 0.15s;
   }
 
@@ -365,22 +381,29 @@
   tbody tr:hover { background: #f8fafc; }
 
   tbody td {
-    padding: 14px 16px;
-    color: #334155;
+    padding: 14px 12px;
+    color: #0f172a;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    max-width: 0; /* required for text-overflow to work with table-layout:fixed */
   }
 
-  /* Title column: wraps fully, never truncates */
+  /* Title column: wraps naturally, takes available space */
   tbody td:nth-child(3) {
     white-space: normal;
     word-break: break-word;
     overflow-wrap: break-word;
-    overflow: hidden;
-    line-height: 1.4;
-    max-width: 420px;
-    min-width: 200px;
+    line-height: 1.5;
+    max-width: none;
+  }
+
+  /* Keyword column: allow wrapping at small sizes */
+  tbody td:nth-child(6) {
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    max-width: none;
   }
 
   .badge {
@@ -1028,9 +1051,17 @@
       </div>
       <div class="table-wrap">
         <table>
+          <colgroup>
+            <col style="width:44px">
+            <col style="width:13%">
+            <col>
+            <col style="width:16%">
+            <col style="width:7%">
+            <col style="width:15%">
+          </colgroup>
           <thead>
             <tr>
-              <th style="width:36px"></th>
+              <th style="width:44px"></th>
               <th onclick="sortTable('NCT')">NCT ID ↕</th>
               <th onclick="sortTable('Title')">Title ↕</th>
               <th onclick="sortTable('Status')">Status ↕</th>
@@ -1654,7 +1685,7 @@ function renderTable() {
       <td title="${r.Title.replace(/"/g,'&quot;')}">${r.Title}</td>
       <td>${badgeBadge(r.Status)}</td>
       <td>${r['Start Date'] ? new Date(r['Start Date']).getFullYear() || '—' : '—'}</td>
-      <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.Keyword}</td>
+      <td>${r.Keyword}</td>
     </tr>`;
     if (isOpen) {
       const esc = s => (s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');
