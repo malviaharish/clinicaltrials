@@ -6,12 +6,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Clinical Trial Explorer</title>
   <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap"
     rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
     :root {
       --bg: #f4f7f9;
@@ -27,8 +28,521 @@
       --gold: #d97706;
       --green: #059669;
       --teal: #0d9488;
-      --radius: 14px;
+      --radius: 16px;
       --shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.08), 0 0 15px rgba(37, 99, 235, 0.04);
+    }
+
+    body.dark-mode {
+      --bg: #0b1121;
+      --surface: #1e293b;
+      --surface2: #0f172a;
+      --border: #334155;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #60a5fa;
+      --accent-glow: #93c5fd;
+      --accent2: #38bdf8;
+      --accent3: #fb7185;
+      --gold: #fbbf24;
+      --green: #34d399;
+      --teal: #2dd4bf;
+      --shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.6), 0 0 15px rgba(96, 165, 250, 0.05);
+    }
+
+    body.dark-mode body::before {
+      background: radial-gradient(circle 800px at 10% 10%, rgba(37, 99, 235, 0.08) 0%, transparent 100%),
+        radial-gradient(circle 600px at 90% 80%, rgba(2, 132, 199, 0.06) 0%, transparent 100%);
+    }
+
+    body.dark-mode .grid-overlay {
+      background-image: linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+    }
+
+    body.dark-mode .card,
+    body.dark-mode .table-wrap {
+      background: var(--surface);
+      border-color: var(--border);
+    }
+
+    body.dark-mode input[type="text"],
+    body.dark-mode .search-small,
+    body.dark-mode .page-size-select {
+      background: var(--surface2);
+      color: var(--text);
+      border-color: var(--border);
+    }
+
+    body.dark-mode input[type="text"]:focus,
+    body.dark-mode .search-small:focus {
+      background: #1e293b;
+    }
+
+    body.dark-mode thead th {
+      background: #0f172a;
+      color: #94a3b8;
+      border-bottom-color: var(--border);
+    }
+
+    body.dark-mode tbody tr {
+      border-bottom-color: #334155;
+    }
+
+    body.dark-mode tbody tr:hover {
+      background: #1e293b;
+    }
+
+    body.dark-mode tbody tr.selected {
+      background: #1e3a5f;
+    }
+
+    body.dark-mode tbody td {
+      color: #e2e8f0;
+    }
+
+    body.dark-mode .list-row:hover {
+      background: #1e293b;
+    }
+
+    body.dark-mode .metric-card,
+    body.dark-mode .feature-item,
+    body.dark-mode .contact-card,
+    body.dark-mode .toast,
+    body.dark-mode .loader-box,
+    body.dark-mode .view-picker-popup {
+      background: var(--surface2);
+      border-color: var(--border);
+    }
+
+    body.dark-mode .detail-row td {
+      background: #0f172a !important;
+    }
+
+    body.dark-mode .detail-row-inner {
+      border-bottom-color: var(--border);
+    }
+
+    body.dark-mode .dr-val,
+    body.dark-mode .dr-para,
+    body.dark-mode .dr-list li,
+    body.dark-mode .dr-title-brief,
+    body.dark-mode .dr-label-tag,
+    body.dark-mode .chart-hint,
+    body.dark-mode .feature-desc,
+    body.dark-mode .contact-detail,
+    body.dark-mode .loader-text,
+    body.dark-mode .loader-count,
+    body.dark-mode .table-controls,
+    body.dark-mode .chart-sub-title,
+    body.dark-mode .contact-name {
+      color: #cbd5e1;
+    }
+
+    body.dark-mode .dr-title-big,
+    body.dark-mode .feature-label {
+      color: #f1f5f9;
+    }
+
+    body.dark-mode .dr-section-title {
+      color: #93c5fd;
+    }
+
+    body.dark-mode .year-range-labels span {
+      color: #2dd4bf;
+    }
+
+    body.dark-mode .badge-unknown {
+      background: #334155;
+      color: #cbd5e1;
+      border-color: #475569;
+    }
+
+    body.dark-mode .chart-hint span {
+      background: #1e293b;
+      border-color: #334155;
+    }
+
+    body.dark-mode .loader-overlay {
+      background: rgba(15, 23, 42, 0.85);
+    }
+
+    body.dark-mode .btn-outline {
+      background: transparent;
+      color: var(--text);
+      border-color: var(--border);
+    }
+
+    body.dark-mode .btn-outline:hover {
+      background: #1e293b;
+    }
+
+    body.dark-mode .btn-outline:disabled {
+      opacity: 0.3;
+      border-color: #334155;
+      color: #94a3b8;
+    }
+
+    body.dark-mode .expand-btn {
+      background: #1e293b;
+      border-color: var(--border);
+      color: #94a3b8;
+    }
+
+    body.dark-mode .page-btn {
+      background: var(--surface2);
+      color: var(--text);
+      border-color: var(--border);
+    }
+
+    body.dark-mode .world-map-wrap {
+      background: #1e293b;
+    }
+
+    body.dark-mode .filter-banner {
+      background: #1e3a5f;
+      border-color: #2563eb55;
+      color: #93c5fd;
+    }
+
+    body.dark-mode .filter-clear {
+      background: #1e293b;
+      border-color: #334155;
+      color: #93c5fd;
+    }
+
+    body.dark-mode .filter-clear:hover {
+      background: #334155;
+    }
+
+    body.dark-mode .status-legend summary {
+      background: #1e293b;
+    }
+
+    body.dark-mode .status-legend-list {
+      background: #0f172a;
+    }
+
+    body.dark-mode .status-legend-list li {
+      color: #cbd5e1;
+    }
+
+    body.dark-mode .cond-tag {
+      background: #1e293b;
+      border-color: var(--border);
+      color: #cbd5e1;
+    }
+
+    body.dark-mode .pdf-loader-overlay {
+      background: rgba(15, 23, 42, 0.85);
+    }
+
+    body.dark-mode .pdf-loader-box {
+      background: #1e293b;
+      border-color: #065f46;
+    }
+
+    body.dark-mode select.search-small {
+      background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    }
+
+    body.dark-mode .nct-link:hover {
+      color: #93c5fd;
+    }
+
+    /* --- CRITERIA GRID --- */
+    .criteria-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-top: 16px;
+    }
+
+    .criteria-box {
+      padding: 16px 20px;
+      border-radius: 12px;
+      font-size: 13.5px;
+      line-height: 1.6;
+    }
+
+    .criteria-box h4 {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 12px;
+    }
+
+    .box-inclusion {
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      color: #065f46;
+    }
+
+    .box-inclusion h4 {
+      color: #047857;
+    }
+
+    .box-exclusion {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #991b1b;
+    }
+
+    .box-exclusion h4 {
+      color: #b91c1c;
+    }
+
+    body.dark-mode .box-inclusion {
+      background: rgba(16, 185, 129, 0.1);
+      border-color: rgba(16, 185, 129, 0.2);
+      color: #a7f3d0;
+    }
+
+    body.dark-mode .box-inclusion h4 {
+      color: #34d399;
+    }
+
+    body.dark-mode .box-exclusion {
+      background: rgba(239, 68, 68, 0.1);
+      border-color: rgba(239, 68, 68, 0.2);
+      color: #fecaca;
+    }
+
+    body.dark-mode .box-exclusion h4 {
+      color: #f87171;
+    }
+
+    @media (max-width: 768px) {
+      .criteria-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* ==================== SEARCH HISTORY CHIPS ==================== */
+    .search-history {
+      margin-top: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .sh-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+      margin-right: 4px;
+    }
+
+    .sh-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-size: 12.5px;
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.2s;
+      user-select: none;
+    }
+
+    .sh-chip:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.1);
+    }
+
+    .sh-chip-pin {
+      font-size: 13px;
+      opacity: 0.5;
+      transition: all 0.2s;
+    }
+
+    .sh-chip-pin:hover {
+      opacity: 1;
+      transform: scale(1.15);
+    }
+
+    .sh-chip.pinned {
+      background: #fffbeb;
+      border-color: #fcd34d;
+      color: #b45309;
+    }
+
+    body.dark-mode .sh-chip.pinned {
+      background: rgba(245, 158, 11, 0.1);
+      border-color: rgba(245, 158, 11, 0.3);
+      color: #fcd34d;
+    }
+
+    .sh-chip-del {
+      font-size: 14px;
+      line-height: 1;
+      opacity: 0.4;
+      margin-left: 2px;
+      transition: all 0.2s;
+    }
+
+    .sh-chip-del:hover {
+      opacity: 1;
+      color: var(--accent3);
+    }
+
+    /* ==================== COMPARISON MODAL ==================== */
+    .compare-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.7);
+      z-index: 9999;
+      display: none;
+      place-items: center;
+      backdrop-filter: blur(4px);
+    }
+
+    .compare-overlay.visible {
+      display: grid;
+    }
+
+    .compare-modal {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      width: 95vw;
+      max-width: 1600px;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+      animation: fadeUp 0.3s ease both;
+    }
+
+    .compare-header {
+      background: var(--surface);
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 20;
+    }
+
+    .compare-content {
+      overflow: auto;
+      padding: 0;
+      flex: 1;
+    }
+
+    .compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 800px;
+    }
+
+    .compare-table th,
+    .compare-table td {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      vertical-align: top;
+      font-size: 13.5px;
+      color: var(--text);
+      line-height: 1.5;
+      white-space: normal;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      max-width: 360px;
+    }
+
+    .compare-table th {
+      background: var(--surface);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      font-weight: 700;
+      text-align: left;
+      color: var(--accent);
+      border-bottom: 2px solid var(--border);
+    }
+
+    .compare-table td:first-child {
+      position: sticky;
+      left: 0;
+      background: var(--surface);
+      z-index: 5;
+      font-weight: 700;
+      width: 180px;
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-right: 2px solid var(--border);
+    }
+
+    .compare-table tr:nth-child(even) td:not(:first-child) {
+      background: var(--surface2);
+    }
+
+    .compare-table tr:hover td:not(:first-child) {
+      background: rgba(37, 99, 235, 0.03);
+    }
+
+    body.dark-mode .compare-table tr:hover td:not(:first-child) {
+      background: rgba(96, 165, 250, 0.05);
+    }
+
+    /* Scrollbar for nested criteria in compare view */
+    .compare-scroll-box {
+      max-height: 300px;
+      overflow-y: auto;
+      padding-right: 8px;
+    }
+
+    .compare-scroll-box::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .compare-scroll-box::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .compare-scroll-box::-webkit-scrollbar-thumb {
+      background: var(--muted);
+      border-radius: 10px;
+    }
+
+
+    /* ==================== GLOBAL SETTINGS ==================== */
+    .dark-mode-toggle {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 200;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 50px;
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      box-shadow: var(--shadow);
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .dark-mode-toggle:hover {
+      border-color: var(--accent);
+      color: var(--accent);
     }
 
     *,
@@ -52,8 +566,7 @@
       position: fixed;
       inset: 0;
       z-index: 0;
-      background:
-        radial-gradient(circle 800px at 10% 10%, rgba(37, 99, 235, 0.04) 0%, transparent 100%),
+      background: radial-gradient(circle 800px at 10% 10%, rgba(37, 99, 235, 0.04) 0%, transparent 100%),
         radial-gradient(circle 600px at 90% 80%, rgba(2, 132, 199, 0.04) 0%, transparent 100%),
         radial-gradient(circle 500px at 50% 50%, rgba(16, 185, 129, 0.03) 0%, transparent 100%);
       pointer-events: none;
@@ -100,8 +613,8 @@
     .header-text h1 {
       font-family: 'Plus Jakarta Sans', sans-serif;
       font-size: clamp(28px, 5vw, 44px);
-      font-weight: 700;
-      letter-spacing: -0.02em;
+      font-weight: 800;
+      letter-spacing: -0.03em;
       line-height: 1.1;
       background: linear-gradient(135deg, var(--text) 30%, var(--accent));
       -webkit-background-clip: text;
@@ -146,6 +659,16 @@
       border-radius: 50%;
       background: var(--accent);
       box-shadow: 0 0 8px rgba(37, 99, 235, 0.4);
+    }
+
+    .card-subtitle {
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted);
+      margin-left: auto;
+      text-transform: none;
+      letter-spacing: 0;
     }
 
     /* ==================== FEATURE GUIDE ==================== */
@@ -259,6 +782,7 @@
       line-height: 1.5;
     }
 
+    /* Search Input Area */
     .search-grid {
       display: grid;
       grid-template-columns: 1fr auto;
@@ -302,6 +826,7 @@
       background: #ffffff;
     }
 
+    /* Buttons */
     .btn {
       padding: 13px 20px;
       border-radius: 10px;
@@ -340,10 +865,15 @@
       border: 1px solid var(--border);
     }
 
-    .btn-outline:hover {
+    .btn-outline:hover:not(:disabled) {
       background: #f8fafc;
       border-color: var(--accent);
       color: var(--accent);
+    }
+
+    .btn-outline:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
 
     .btn-pdf {
@@ -358,68 +888,235 @@
       box-shadow: 0 8px 25px rgba(5, 150, 105, 0.35);
     }
 
-    /* ==================== OVERVIEW ROW LAYOUT ==================== */
+    #watchlistToggleBtn.active-filter {
+      background: #fffbeb;
+      border-color: #f59e0b;
+      color: #b45309;
+    }
+
+    body.dark-mode #watchlistToggleBtn.active-filter {
+      background: #451a03;
+      border-color: #b45309;
+      color: #fde68a;
+    }
+
+    /* Layout & Data Sections (Copied from previous iteration) */
     .overview-row {
       display: grid;
-      grid-template-columns: 1.5fr 1fr;
+      grid-template-columns: 1.2fr 1fr 1fr;
       gap: 20px;
       margin-bottom: 20px;
       align-items: stretch;
+      min-width: 0;
     }
 
-    @media (max-width: 900px) {
+    .overview-row>* {
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    @media (max-width: 1100px) {
+      .overview-row {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 700px) {
       .overview-row {
         grid-template-columns: 1fr;
       }
     }
 
-    .metrics-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
+    .unified-list-container {
+      max-height: 220px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-right: 8px;
     }
 
-    @media (max-width: 540px) {
-      .metrics-grid {
-        grid-template-columns: 1fr;
-      }
+    .unified-list-container::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .unified-list-container::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .unified-list-container::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 10px;
+    }
+
+    body.dark-mode .unified-list-container::-webkit-scrollbar-thumb {
+      background: #334155;
+    }
+
+    .list-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      margin-bottom: 6px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+    }
+
+    .list-row:hover {
+      border-color: #cbd5e1;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+    }
+
+    body.dark-mode .list-row:hover {
+      border-color: #475569;
+    }
+
+    .list-row.sp-active {
+      background: #eff6ff;
+      border-color: #93c5fd;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08);
+    }
+
+    body.dark-mode .list-row.sp-active {
+      background: #1e3a5f;
+      border-color: #60a5fa;
+    }
+
+    .list-rank {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      width: 18px;
+      flex-shrink: 0;
+      text-align: right;
+    }
+
+    .list-name {
+      flex: 1.5;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .list-row.sp-active .list-name {
+      color: var(--accent);
+    }
+
+    body.dark-mode .list-row.sp-active .list-name {
+      color: #93c5fd;
+    }
+
+    .list-count {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 700;
+      width: 32px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .metrics-grid {
+      display: grid;
+      grid-template-rows: repeat(3, 1fr);
+      gap: 12px;
+      height: 100%;
+      max-height: 220px;
     }
 
     .metric-card {
       background: var(--surface2);
       border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 16px 12px;
-      text-align: center;
+      padding: 0 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       cursor: pointer;
-      transition: transform 0.2s, border-color 0.2s, background 0.2s, box-shadow 0.2s;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+      height: 65px;
     }
 
     .metric-card:hover {
-      transform: translateY(-2px);
+      transform: translateX(4px);
       border-color: #cbd5e1;
-      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
     }
 
-    .metric-card:nth-child(1) {
-      border-top: 3px solid var(--accent);
+    .metric-card.active-metric {
+      border-width: 2px;
     }
 
-    .metric-card:nth-child(2) {
-      border-top: 3px solid var(--accent3);
+    .metric-card:nth-child(1).active-metric {
+      border-color: var(--accent);
+      background: #eff6ff;
     }
 
-    .metric-card:nth-child(3) {
-      border-top: 3px solid var(--accent2);
+    .metric-card:nth-child(2).active-metric {
+      border-color: var(--accent3);
+      background: #fff1f2;
+    }
+
+    .metric-card:nth-child(3).active-metric {
+      border-color: var(--accent2);
+      background: #f0f9ff;
+    }
+
+    body.dark-mode .metric-card:nth-child(1).active-metric {
+      background: #1e3a8a30;
+      border-color: #3b82f6;
+    }
+
+    body.dark-mode .metric-card:nth-child(2).active-metric {
+      background: #9f123930;
+      border-color: #f43f5e;
+    }
+
+    body.dark-mode .metric-card:nth-child(3).active-metric {
+      background: #07598530;
+      border-color: #0ea5e9;
+    }
+
+    .metric-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .metric-label::before {
+      content: '';
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .metric-card:nth-child(1) .metric-label::before {
+      background: var(--accent);
+    }
+
+    .metric-card:nth-child(2) .metric-label::before {
+      background: var(--accent3);
+    }
+
+    .metric-card:nth-child(3) .metric-label::before {
+      background: var(--accent2);
     }
 
     .metric-val {
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      font-size: 32px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 24px;
       font-weight: 700;
       line-height: 1;
-      margin-bottom: 6px;
       letter-spacing: -0.02em;
     }
 
@@ -435,71 +1132,182 @@
       color: var(--accent2);
     }
 
-    .metric-label {
-      font-size: 11px;
+    /* UI Sections (Gantt, Charts, etc.) */
+    .gantt-tab-bar {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .gantt-tab {
+      padding: 8px 16px;
+      font-size: 12px;
       font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
       color: var(--muted);
-    }
-
-    .kw-table-container {
-      max-height: 140px;
-      overflow-y: auto;
-      padding-right: 4px;
-    }
-
-    .kw-table-container::-webkit-scrollbar {
-      width: 4px;
-    }
-
-    .kw-table-container::-webkit-scrollbar-track {
-      background: transparent;
-    }
-
-    .kw-table-container::-webkit-scrollbar-thumb {
-      background: #cbd5e1;
-      border-radius: 10px;
-    }
-
-    .kw-table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-
-    .kw-table tr {
       cursor: pointer;
-      transition: background 0.15s;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: all 0.15s;
+      user-select: none;
+      background: none;
+      border: none;
+      font-family: 'Inter', sans-serif;
     }
 
-    .kw-table tr:hover {
-      background: #f1f5f9;
+    .gantt-tab:hover {
+      color: var(--accent);
     }
 
-    .kw-table td {
-      padding: 10px 12px;
-      border-bottom: 1px solid #f1f5f9;
-      font-size: 12.5px;
+    .gantt-tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
     }
 
-    .kw-table tr:last-child td {
-      border-bottom: none;
+    .gantt-wrap {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px 28px;
+      overflow-x: auto;
     }
 
-    .kw-table td:first-child {
-      color: var(--text);
+    body.dark-mode .gantt-wrap {
+      background: #0a1020;
+    }
+
+    .gantt-legend {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .gantt-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--muted);
       font-weight: 500;
     }
 
-    .kw-table td:last-child {
-      font-family: 'Plus Jakarta Sans', serif;
-      font-weight: 700;
-      font-size: 14px;
-      color: var(--accent);
-      text-align: right;
+    .gantt-legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+      flex-shrink: 0;
     }
 
-    /* ==================== 3-COLUMN CHARTS ROW ==================== */
+    /* KB Overlay */
+    .kb-focused {
+      box-shadow: inset 3px 0 0 var(--accent) !important;
+      background: #f0f7ff !important;
+    }
+
+    body.dark-mode .kb-focused {
+      background: #1a2a40 !important;
+      box-shadow: inset 3px 0 0 #60a5fa !important;
+    }
+
+    .kb-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.6);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .kb-overlay.visible {
+      display: flex;
+    }
+
+    .kb-modal {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px 32px;
+      max-width: 520px;
+      width: 90vw;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.2);
+      animation: fadeUp 0.2s ease both;
+    }
+
+    .kb-modal-title {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .kb-close {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      width: 28px;
+      height: 28px;
+      cursor: pointer;
+      font-size: 14px;
+      color: var(--muted);
+      display: grid;
+      place-items: center;
+      transition: all 0.15s;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .kb-close:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .kb-grid {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 10px 20px;
+      align-items: center;
+    }
+
+    .kb-key kbd {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-bottom-width: 2px;
+      border-radius: 5px;
+      padding: 3px 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+    }
+
+    body.dark-mode .kb-key kbd {
+      background: #1e293b;
+      border-color: #475569;
+    }
+
+    .kb-desc {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .kb-hint {
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+      font-size: 11px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    /* Charts & Filters */
     .charts-grid-3 {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -525,7 +1333,6 @@
       width: 100%;
     }
 
-    /* ==================== NEW YEAR SLIDER STYLES ==================== */
     .year-chart-container {
       position: relative;
       width: 100%;
@@ -609,17 +1416,6 @@
       transform: scale(1.12);
     }
 
-    .year-range-control input[type="range"]::-moz-range-thumb {
-      pointer-events: auto;
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      background: #ffffff;
-      border: 2.5px solid #0d9488;
-      cursor: grab;
-      box-shadow: 0 2px 8px rgba(13, 148, 136, 0.35);
-    }
-
     .year-range-labels {
       display: flex;
       justify-content: space-between;
@@ -663,7 +1459,6 @@
       border-top-color: #0d9488;
     }
 
-    /* ==================== WORLD MAP ==================== */
     .world-map-wrap {
       position: relative;
       width: 100%;
@@ -725,13 +1520,13 @@
       min-height: 18px;
     }
 
-    /* ==================== TABLE CONTROLS & ALIGNED FILTERS ==================== */
     .table-controls {
       display: flex;
       gap: 12px;
       margin-bottom: 16px;
       flex-wrap: wrap;
       align-items: center;
+      color: var(--text);
     }
 
     .filters-container {
@@ -772,7 +1567,6 @@
       box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
     }
 
-    /* Dynamic active filter glow */
     .search-small.active-filter {
       border-color: var(--accent);
       background-color: #eff6ff;
@@ -794,7 +1588,6 @@
       background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%232563eb' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
     }
 
-    /* ==================== PAGE SIZE & CUSTOMIZE VIEW PICKER ==================== */
     .page-size-wrap {
       display: flex;
       align-items: center;
@@ -886,7 +1679,7 @@
       accent-color: var(--accent);
     }
 
-    /* ==================== TABLE ==================== */
+    /* Tables */
     .table-wrap {
       overflow-x: auto;
       border-radius: 12px;
@@ -953,7 +1746,6 @@
       max-width: 0;
     }
 
-    /* Dynamic text wrapping class applied to JS generated columns */
     .col-wrap-text {
       white-space: normal;
       word-break: break-word;
@@ -1003,7 +1795,6 @@
       border-color: #e2e8f0;
     }
 
-    /* Fix for large numbers */
     .row-index {
       width: 60px !important;
       text-align: center;
@@ -1078,17 +1869,18 @@
     .detail-row td {
       padding: 0 !important;
       background: #f8fafc !important;
-      overflow: hidden;
+      overflow: visible;
+      white-space: normal !important;
+      max-width: none !important;
     }
 
     .detail-row-inner {
       padding: 24px 32px;
       border-bottom: 1px solid var(--border);
       animation: fadeUp 0.2s ease both;
-      overflow: hidden;
+      overflow: visible;
       box-sizing: border-box;
       width: 100%;
-      max-width: 100%;
     }
 
     .dr-header {
@@ -1276,6 +2068,7 @@
       color: #475569;
     }
 
+    /* Modals & Loaders */
     .loader-overlay {
       position: fixed;
       inset: 0;
@@ -1618,6 +2411,91 @@
 </head>
 
 <body>
+  <div class="kb-overlay" id="kbOverlay" onclick="closeKbOverlay(event)">
+    <div class="kb-modal">
+      <div class="kb-modal-title">
+        ⌨️ Keyboard Shortcuts
+        <button class="kb-close" onclick="toggleKbOverlay()">✕</button>
+      </div>
+      <div class="kb-grid">
+        <div class="kb-key"><kbd>↓</kbd> <kbd>↑</kbd></div>
+        <div class="kb-desc">Move focus to next / previous trial row</div>
+        <div class="kb-key"><kbd>Enter</kbd></div>
+        <div class="kb-desc">Expand or collapse the focused row</div>
+        <div class="kb-key"><kbd>S</kbd></div>
+        <div class="kb-desc">Save / unsave focused trial to watchlist</div>
+        <div class="kb-key"><kbd>C</kbd></div>
+        <div class="kb-desc">Copy AMA citation of focused trial</div>
+        <div class="kb-key"><kbd>Esc</kbd></div>
+        <div class="kb-desc">Close expanded row / clear focus</div>
+        <div class="kb-key"><kbd>/</kbd></div>
+        <div class="kb-desc">Focus the search input</div>
+        <div class="kb-key"><kbd>→</kbd> <kbd>←</kbd></div>
+        <div class="kb-desc">Next / previous page</div>
+        <div class="kb-key"><kbd>?</kbd></div>
+        <div class="kb-desc">Show / hide this shortcuts panel</div>
+      </div>
+      <div class="kb-hint">Shortcuts are disabled when typing in any input field</div>
+    </div>
+  </div>
+
+  <div id="excelOverlay" class="compare-overlay" onclick="if(event.target===this)closeExcelModal()">
+    <div class="compare-modal" style="max-width:780px;max-height:85vh;">
+      <div class="compare-header">
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:17px;font-weight:800;color:var(--text);">📊
+            Export to Excel</div>
+          <div id="excelExportScope" style="font-size:12.5px;color:var(--muted);"></div>
+        </div>
+        <button onclick="closeExcelModal()" class="kb-close">✕</button>
+      </div>
+      <div style="padding:20px 24px;overflow-y:auto;flex:1;">
+        <div
+          style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+          <div style="font-size:13px;font-weight:700;color:var(--text);">Choose columns to include:</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button onclick="excelSelectAll()" class="btn btn-outline" style="padding:5px 12px;font-size:12px;">✓
+              All</button>
+            <button onclick="excelSelectNone()" class="btn btn-outline" style="padding:5px 12px;font-size:12px;">✕
+              None</button>
+            <button onclick="excelSelectPreset('core')" class="btn btn-outline"
+              style="padding:5px 12px;font-size:12px;color:var(--accent);border-color:var(--accent);">📌 Core
+              Fields</button>
+            <button onclick="excelSelectPreset('lit')" class="btn btn-outline"
+              style="padding:5px 12px;font-size:12px;color:var(--green);border-color:var(--green);">📚 Literature
+              Review</button>
+          </div>
+        </div>
+        <div id="excelColGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px;">
+        </div>
+      </div>
+      <div
+        style="padding:16px 24px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+        <div style="font-size:12.5px;color:var(--muted);" id="excelColCount"></div>
+        <div style="display:flex;gap:10px;">
+          <button onclick="closeExcelModal()" class="btn btn-outline">Cancel</button>
+          <button onclick="doExportExcel()" class="btn btn-primary" id="excelExportBtn">⬇ Download Excel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="compare-overlay" id="compareOverlay" onclick="if(event.target===this) closeCompareModal()">
+    <div class="compare-modal">
+      <div class="compare-header">
+        <h2 style="font-size:18px; font-family:'Plus Jakarta Sans', sans-serif; margin:0; color:var(--text);">Trial
+          Comparison Engine</h2>
+        <button class="kb-close" onclick="closeCompareModal()">✕</button>
+      </div>
+      <div class="compare-content" id="compareContent">
+      </div>
+    </div>
+  </div>
+
+  <button class="dark-mode-toggle" id="darkModeToggle" onclick="toggleDarkMode()" title="Toggle light/dark mode">
+    <span class="toggle-icon" id="darkModeIcon">🌙</span>
+    <span id="darkModeLabel">Dark</span>
+  </button>
   <div class="grid-overlay"></div>
 
   <div class="loader-overlay" id="loaderOverlay">
@@ -1625,6 +2503,9 @@
       <div class="spinner"></div>
       <div class="loader-text">Searching ClinicalTrials.gov</div>
       <div class="loader-keyword" id="loaderKeyword"></div>
+      <div class="loader-count" id="loaderCount"
+        style="margin-top: 12px; font-weight: 600; color: var(--accent); font-family: 'JetBrains Mono', monospace;">0
+        trials fetched...</div>
     </div>
   </div>
 
@@ -1649,11 +2530,10 @@
       </div>
       <div class="header-text">
         <h1>Clinical Trial Explorer</h1>
-        <p>Search, analyse, and export trials from ClinicalTrials.gov</p>
+        <p>Search, analyse, and compare trials from ClinicalTrials.gov</p>
       </div>
     </header>
 
-    <!-- ============ SEARCH + FEATURE GUIDE ============ -->
     <div class="card" style="animation-delay:0.05s">
       <div class="card-title"><span class="dot"></span> Search Parameters</div>
       <div class="search-grid">
@@ -1668,6 +2548,8 @@
         </div>
       </div>
 
+      <div class="search-history" id="searchHistoryContainer" style="display: none;"></div>
+
       <div class="feature-guide" id="featureGuide">
         <div class="feature-guide-title">✨ Features at a Glance</div>
         <div class="features-grid">
@@ -1680,19 +2562,27 @@
             </div>
           </div>
           <div class="feature-item">
+            <div class="feature-icon fi-green">⚖️</div>
+            <div class="feature-body">
+              <div class="feature-label">Compare Mode</div>
+              <div class="feature-desc">Select 2 or 3 trials and view their full parameters side-by-side with grouped
+                sections: design, outcomes, eligibility, and more.</div>
+            </div>
+          </div>
+          <div class="feature-item">
+            <div class="feature-icon fi-sky">📍</div>
+            <div class="feature-body">
+              <div class="feature-label">Smart History</div>
+              <div class="feature-desc">Automatically saves your 10 most recent searches. Click the pin icon to keep
+                your favorite searches permanently.</div>
+            </div>
+          </div>
+          <div class="feature-item">
             <div class="feature-icon fi-rose">📊</div>
             <div class="feature-body">
               <div class="feature-label">Interactive Analytics</div>
               <div class="feature-desc">Click on any chart or map to filter the table instantly. You can mix and match
                 visual filters with dropdowns seamlessly.</div>
-            </div>
-          </div>
-          <div class="feature-item">
-            <div class="feature-icon fi-sky">🎛️</div>
-            <div class="feature-body">
-              <div class="feature-label">Advanced Filtering</div>
-              <div class="feature-desc">Drill down using powerful dropdowns: Study Type, Phase, Primary Purpose,
-                Intervention, Allocation, Masking, Sex, and Results.</div>
             </div>
           </div>
           <div class="feature-item">
@@ -1704,15 +2594,7 @@
             </div>
           </div>
           <div class="feature-item">
-            <div class="feature-icon fi-purple">📋</div>
-            <div class="feature-body">
-              <div class="feature-label">Trial Detail Expand</div>
-              <div class="feature-desc">Click any row to reveal in-depth trial details, including criteria, outcomes,
-                contacts, locations, and clickable PubMed links.</div>
-            </div>
-          </div>
-          <div class="feature-item">
-            <div class="feature-icon fi-green">📄</div>
+            <div class="feature-icon fi-purple">📄</div>
             <div class="feature-body">
               <div class="feature-label">Batch PDF Export</div>
               <div class="feature-desc">Check the boxes next to studies you like, then click 'PDF' to download a clean,
@@ -1720,11 +2602,11 @@
             </div>
           </div>
           <div class="feature-item">
-            <div class="feature-icon fi-teal">⬇️</div>
+            <div class="feature-icon fi-teal">📊</div>
             <div class="feature-body">
-              <div class="feature-label">CSV Bulk Export</div>
-              <div class="feature-desc">Click 'CSV' to download your filtered list to a spreadsheet. Select specific
-                rows to export only those.</div>
+              <div class="feature-label">Excel Export</div>
+              <div class="feature-desc">Export to .xlsx with a column picker. Use the Literature Review preset for
+                systematic reviews, or handpick exactly the fields you need.</div>
             </div>
           </div>
           <div class="feature-item">
@@ -1744,43 +2626,45 @@
       <div class="overview-row">
         <div class="card" id="metricsCard" style="margin-bottom: 0; padding: 20px;">
           <div class="card-title" style="margin-bottom: 16px;">
-            <span class="dot" style="background:var(--accent3);box-shadow:0 0 8px rgba(225, 29, 72, 0.4)"></span>
+            <span class="dot" style="background:var(--accent);box-shadow:0 0 8px rgba(37, 99, 235, 0.4)"></span>
             Overview
-            <span
-              style="font-family:'Inter';font-size:11px;font-weight:500;color:var(--muted);margin-left:8px;text-transform:none;letter-spacing:0;">—
-              click card to filter</span>
+            <span class="card-subtitle">— click card to filter</span>
           </div>
           <div class="metrics-grid">
             <div class="metric-card" id="cardTotal" onclick="setOverviewFilter('total')">
-              <div class="metric-val" id="metTotal">0</div>
               <div class="metric-label">Total Records</div>
+              <div class="metric-val" id="metTotal">0</div>
             </div>
             <div class="metric-card" id="cardDupes" onclick="setOverviewFilter('dupes')">
-              <div class="metric-val" id="metDupes">0</div>
               <div class="metric-label">Duplicates</div>
+              <div class="metric-val" id="metDupes">0</div>
             </div>
             <div class="metric-card" id="cardUnique" onclick="setOverviewFilter('unique')">
-              <div class="metric-val" id="metUnique">0</div>
               <div class="metric-label">Unique Trials</div>
+              <div class="metric-val" id="metUnique">0</div>
             </div>
           </div>
         </div>
 
         <div class="card" style="margin-bottom: 0; padding: 20px; display: flex; flex-direction: column;">
-          <div class="card-title" style="margin-bottom: 12px;">
-            <span class="dot" style="background:var(--gold);box-shadow:0 0 8px rgba(217, 119, 6, 0.4)"></span> Trials
-            per Keyword
-            <span
-              style="font-family:'Inter';font-size:11px;font-weight:500;color:var(--muted);margin-left:8px;text-transform:none;letter-spacing:0;">—
-              click to filter</span>
+          <div class="card-title" style="margin-bottom: 16px;">
+            <span class="dot" style="background:var(--gold);box-shadow:0 0 8px rgba(217, 119, 6, 0.4)"></span>
+            Top Keywords
+            <span class="card-subtitle">— click row to filter</span>
           </div>
-          <div class="kw-table-container">
-            <table class="kw-table" id="kwTable"></table>
+          <div class="unified-list-container" id="kwList"></div>
+        </div>
+
+        <div class="card" style="margin-bottom: 0; padding: 20px; display: flex; flex-direction: column;">
+          <div class="card-title" style="margin-bottom: 16px;">
+            <span class="dot" style="background:var(--accent2);box-shadow:0 0 8px rgba(2,132,199,0.4)"></span>
+            Top Sponsors
+            <span class="card-subtitle">— click row to filter</span>
           </div>
+          <div class="unified-list-container" id="sponsorList"></div>
         </div>
       </div>
 
-      <!-- Analytics & Filters Section -->
       <div class="card" id="analyticsCard">
         <div
           style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
@@ -1789,9 +2673,7 @@
             <span class="dot" style="background:var(--accent2);box-shadow:0 0 8px rgba(2, 132, 199, 0.4)"></span>
             Analytics & Filters <span id="analyticsToggleIcon"
               style="margin-left:6px; font-size:12px; color:var(--muted);">▼</span>
-            <span
-              style="font-family:'Inter';font-size:12px;font-weight:500;color:var(--muted);margin-left:8px;text-transform:none;letter-spacing:0;">—
-              click to hide or show</span>
+            <span class="card-subtitle">— click to hide or show</span>
           </div>
           <button class="filter-clear" id="clearAnalyticsBtn" onclick="clearAllFilters()" style="display:none">✕ Clear
             all filters</button>
@@ -1846,10 +2728,8 @@
 
           <div id="activeChips" style="display:none;flex-wrap:wrap;gap:8px;margin-bottom:18px;"></div>
 
-          <!-- 3-COLUMN CHARTS ROW -->
           <div class="charts-grid-3">
 
-            <!-- Status Chart -->
             <div style="display:flex;flex-direction:column;align-items:center; width:100%;">
               <div class="chart-sub-title" style="text-align:center;width:100%;">Status Distribution</div>
               <div class="chart-wrap" style="height:220px;"><canvas id="statusChart" style="cursor:pointer"></canvas>
@@ -1857,21 +2737,17 @@
               <div class="chart-hint"><span>👆 Click segment to filter</span></div>
             </div>
 
-            <!-- ==================== NEW YEAR CHART + RANGE SLIDER ==================== -->
             <div style="display:flex;flex-direction:column;align-items:center; width:100%;">
               <div class="chart-sub-title" style="text-align:center;width:100%;">Trials by Year</div>
 
               <div class="year-chart-container" style="width:100%;">
-                <!-- Bar chart canvas -->
                 <div class="year-canvas-wrap">
                   <canvas id="yearChart"></canvas>
                 </div>
 
-                <!-- Handle tooltips (positioned by JS) -->
                 <div class="year-handle-tooltip" id="yearTooltipMin" style="left:0%;">2000</div>
                 <div class="year-handle-tooltip" id="yearTooltipMax" style="left:100%;">2026</div>
 
-                <!-- Dual range control -->
                 <div class="year-range-control" id="yearRangeControl">
                   <div class="year-range-track-bg"></div>
                   <div class="year-range-fill" id="yearRangeFill"></div>
@@ -1879,7 +2755,6 @@
                   <input type="range" id="yearRangeMax" oninput="updateYearRange()" onchange="applyYearFilter()">
                 </div>
 
-                <!-- Year labels -->
                 <div class="year-range-labels">
                   <span id="yearMinLabel">2000</span>
                   <span id="yearMaxLabel">2026</span>
@@ -1888,9 +2763,6 @@
 
               <div class="chart-hint" style="margin-top:6px;"><span>👆 Drag handles to filter by year</span></div>
             </div>
-            <!-- ==================== END NEW YEAR SLIDER ==================== -->
-
-            <!-- World Map -->
             <div style="display:flex;flex-direction:column;align-items:center; width:100%;">
               <div class="chart-sub-title" style="text-align:center;width:100%;">Country Distribution</div>
               <div class="world-map-wrap" id="worldMapWrap" style="height:220px; min-height:auto;">
@@ -1958,7 +2830,6 @@
           <input class="search-small" id="tableSearch" style="max-width:300px"
             placeholder="Search by title, NCT, keyword, condition…" oninput="filterTable()">
 
-          <!-- ==================== PAGE SIZE SELECTOR ==================== -->
           <div class="page-size-wrap">
             <span class="page-size-label">Show</span>
             <select class="page-size-select" id="pageSizeSelect" onchange="changePageSize(this.value)">
@@ -1971,7 +2842,16 @@
             <span class="page-size-label">per page</span>
           </div>
 
-          <!-- ==================== VIEW CUSTOMIZER ==================== -->
+          <button id="compareBtn" class="btn btn-outline" onclick="openCompareModal()" disabled
+            style="display:flex;align-items:center;gap:6px;">
+            ⚖️ Compare (0)
+          </button>
+
+          <button id="watchlistToggleBtn" class="btn btn-outline" onclick="toggleWatchlistFilter()"
+            style="display:flex;align-items:center;gap:6px;">
+            <span class="wl-icon">☆</span> Show Saved
+          </button>
+
           <div class="view-picker-wrap" style="position:relative;">
             <button class="btn btn-outline" onclick="toggleViewPicker(event)">
               ⚙ Customize View
@@ -1981,9 +2861,10 @@
               <div id="detailToggles"></div>
             </div>
           </div>
-          <!-- ==================== END VIEW CUSTOMIZER ==================== -->
-
-          <button class="btn btn-outline" onclick="exportCSV()">⬇ CSV</button>
+          <button class="btn btn-outline" onclick="openExcelModal()" title="Export to Excel with column picker">📊
+            Excel</button>
+          <button class="btn btn-outline" onclick="exportRIS()"
+            title="Export as RIS citation format (Zotero, EndNote)">📎 RIS</button>
           <button class="btn btn-pdf" onclick="exportSelectedPDF()">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
               stroke-linecap="round" stroke-linejoin="round">
@@ -1994,6 +2875,8 @@
             </svg>
             PDF
           </button>
+          <button class="btn btn-outline" onclick="toggleKbOverlay()" title="Keyboard shortcuts"
+            style="font-family:'JetBrains Mono',monospace;font-size:12px;padding:8px 10px;">⌨ ?</button>
         </div>
 
         <div class="table-wrap">
@@ -2001,6 +2884,7 @@
             <colgroup>
               <col style="width:44px">
               <col style="width:60px">
+              <col style="width:40px">
               <col style="width:40px">
               <col style="width:11%">
               <col>
@@ -2016,6 +2900,7 @@
                   <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()"
                     style="cursor:pointer; width:15px; height:15px; accent-color:var(--accent);">
                 </th>
+                <th style="width:40px; text-align:center;" title="Saved Trials">★</th>
                 <th onclick="sortTable('NCT')">NCT ID ↕</th>
                 <th onclick="sortTable('Title')">Title ↕</th>
                 <th onclick="sortTable('Status')">Status ↕</th>
@@ -2030,40 +2915,63 @@
       </div>
 
       <span id="exportInfo" style="display:none;"></span>
+    </div>
 
-      <div class="card"
-        style="text-align: center; margin-top: 40px; padding: 36px 20px; border-top: 4px solid var(--accent);">
-        <h2
-          style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 22px; font-weight: 700; color: var(--text); margin-bottom: 12px;">
-          Contact the Developer</h2>
-        <div style="font-size: 18px; font-weight: 700; color: var(--accent); margin-bottom: 6px;">Dr. Harish Kumar B
+    <<div
+      style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px; margin-top: 50px; padding: 24px 10px; border-top: 1px solid var(--border); font-family: 'Inter', sans-serif;">
+
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <div style="font-size: 14.5px; color: var(--text);">
+          Developed by <strong style="color: var(--accent);">Dr. Harish Kumar B</strong>
         </div>
-        <div style="font-size: 15px; color: var(--muted); margin-bottom: 16px;">Clinical Researcher</div>
-        <div
-          style="display: flex; flex-direction: column; gap: 10px; align-items: center; font-size: 14px; font-weight: 500;">
-          <a href="mailto:malviaharish@zohomail.in" style="color: var(--text); text-decoration: none;">✉️
-            malviaharish@zohomail.in</a>
-          <a href="https://www.linkedin.com/in/dr-harish-kumar-b-b8b0bb128/" target="_blank" rel="noopener noreferrer"
-            style="color: var(--accent); text-decoration: none;">🔗 Connect on LinkedIn ↗</a>
+        <div style="font-size: 12.5px; color: var(--muted); font-weight: 500;">
+          Clinical Researcher & Pharmacologist
         </div>
       </div>
 
-    </div>
+      <div style="display: flex; gap: 12px; align-items: center;">
+        <a href="https://www.linkedin.com/in/dr-harish-kumar-b-b8b0bb128/?skipRedirect=true" target="_blank" class="sh-chip" style="text-decoration: none; margin: 0;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+            <path
+              d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" />
+          </svg>
+          LinkedIn
+        </a>
+        <a href="mailto:malviaharish@zohomail.in" class="sh-chip" style="text-decoration: none; margin: 0;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+            <polyline points="22,6 12,13 2,6"></polyline>
+          </svg>
+          Email
+        </a>
+      </div>
+
+  </div>
+
   </div>
 
   <script>
-    // Helper to format API enum strings (e.g. "BASIC_SCIENCE" -> "Basic Science", "PHASE1" -> "Phase 1")
+    // Helper to format API enum strings
     function formatEnum(str) {
       if (!str) return '';
-      // Retain correct casing for common specific acronyms
       if (str === 'NA' || str === 'N/A') return 'N/A';
       if (str === 'ECT') return 'ECT';
-
       return str.replace(/_/g, ' ')
         .replace(/([a-zA-Z])(\d+)/g, '$1 $2')
         .split(' ')
         .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
         .join(' ');
+    }
+
+    // Helper for Sex formatting
+    function formatSexWithSymbol(sex) {
+      if (!sex) return '—';
+      const s = sex.toUpperCase();
+      if (s === 'ALL') return '♂️ ♀️ All';
+      if (s === 'MALE') return '♂️ Male';
+      if (s === 'FEMALE') return '♀️ Female';
+      return sex;
     }
 
     // ==================== STATE ====================
@@ -2078,19 +2986,377 @@
     let pageSize = 20;
     let statusChartInst, yearChartInst;
     let openNCT = null;
+    let focusedNCT = null;
+    let showWatchlistOnly = false;
+
+    let recentSearches = [];
+    let pinnedSearches = [];
 
     let activeOverview = 'unique';
     const activeFilters = {
-      status: new Set(),
-      country: new Set(),
+      status: new Set(), country: new Set(), keyword: new Set(),
       yearRange: { min: null, max: null },
-      dropdowns: {
-        studyType: '', phase: '', allocation: '', masking: '',
-        purpose: '', intModel: '', sex: '', healthy: '', hasResults: ''
-      }
+      dropdowns: { studyType: '', phase: '', allocation: '', masking: '', purpose: '', intModel: '', sex: '', healthy: '', hasResults: '', sponsor: '' }
     };
 
-    // View Customization State (Expanded Row Sections)
+    // ==================== SEARCH HISTORY ====================
+    function loadSearchHistory() {
+      try {
+        recentSearches = JSON.parse(localStorage.getItem('cte_recent_searches') || '[]');
+        pinnedSearches = JSON.parse(localStorage.getItem('cte_pinned_searches') || '[]');
+      } catch (e) { recentSearches = []; pinnedSearches = []; }
+      renderSearchHistory();
+    }
+
+    function saveSearchToHistory(kwStr) {
+      if (!kwStr.trim() || pinnedSearches.includes(kwStr)) return;
+      recentSearches = recentSearches.filter(s => s !== kwStr);
+      recentSearches.unshift(kwStr);
+      if (recentSearches.length > 10) recentSearches.pop();
+      localStorage.setItem('cte_recent_searches', JSON.stringify(recentSearches));
+      renderSearchHistory();
+    }
+
+    function togglePinSearch(kwStr, e) {
+      e.stopPropagation();
+      if (pinnedSearches.includes(kwStr)) {
+        pinnedSearches = pinnedSearches.filter(s => s !== kwStr);
+        recentSearches.unshift(kwStr);
+      } else {
+        recentSearches = recentSearches.filter(s => s !== kwStr);
+        pinnedSearches.push(kwStr);
+      }
+      localStorage.setItem('cte_recent_searches', JSON.stringify(recentSearches));
+      localStorage.setItem('cte_pinned_searches', JSON.stringify(pinnedSearches));
+      renderSearchHistory();
+    }
+
+    function deleteSearch(kwStr, e, isPinned) {
+      e.stopPropagation();
+      if (isPinned) {
+        pinnedSearches = pinnedSearches.filter(s => s !== kwStr);
+        localStorage.setItem('cte_pinned_searches', JSON.stringify(pinnedSearches));
+      } else {
+        recentSearches = recentSearches.filter(s => s !== kwStr);
+        localStorage.setItem('cte_recent_searches', JSON.stringify(recentSearches));
+      }
+      renderSearchHistory();
+    }
+
+    function executeSearchFromHistory(kwStr) {
+      document.getElementById('keywordsInput').value = kwStr;
+      doSearch();
+    }
+
+    function renderSearchHistory() {
+      const cont = document.getElementById('searchHistoryContainer');
+      if (!recentSearches.length && !pinnedSearches.length) {
+        cont.style.display = 'none'; return;
+      }
+      cont.style.display = 'flex';
+      let html = '<span class="sh-label">Searches:</span>';
+
+      pinnedSearches.forEach(kw => {
+        html += `<div class="sh-chip pinned" onclick="executeSearchFromHistory('${kw.replace(/'/g, "\\'")}')" title="Click to search">
+          <span class="sh-chip-pin" onclick="togglePinSearch('${kw.replace(/'/g, "\\'")}', event)" title="Unpin">📌</span>
+          ${kw}
+          <span class="sh-chip-del" onclick="deleteSearch('${kw.replace(/'/g, "\\'")}', event, true)" title="Delete">×</span>
+        </div>`;
+      });
+
+      recentSearches.forEach(kw => {
+        html += `<div class="sh-chip" onclick="executeSearchFromHistory('${kw.replace(/'/g, "\\'")}')" title="Click to search">
+          <span class="sh-chip-pin" onclick="togglePinSearch('${kw.replace(/'/g, "\\'")}', event)" title="Pin to top">📍</span>
+          ${kw}
+          <span class="sh-chip-del" onclick="deleteSearch('${kw.replace(/'/g, "\\'")}', event, false)" title="Delete">×</span>
+        </div>`;
+      });
+      cont.innerHTML = html;
+    }
+
+
+    // ==================== DARK MODE ====================
+    function toggleDarkMode() {
+      const isDark = document.body.classList.toggle('dark-mode');
+      localStorage.setItem('cte_dark', isDark ? '1' : '0');
+      document.getElementById('darkModeIcon').textContent = isDark ? '☀️' : '🌙';
+      document.getElementById('darkModeLabel').textContent = isDark ? 'Light' : 'Dark';
+      if (statusChartInst) renderStatusChart();
+      if (yearChartInst) renderYearChart();
+      if (worldTopoData) renderWorldMap();
+    }
+    (function () {
+      if (localStorage.getItem('cte_dark') === '1') {
+        document.body.classList.add('dark-mode');
+        document.getElementById('darkModeIcon').textContent = '☀️';
+        document.getElementById('darkModeLabel').textContent = 'Light';
+      }
+    })();
+
+    // ==================== WATCHLIST ====================
+    function getWatchlist() {
+      try { return JSON.parse(localStorage.getItem('cte_watchlist') || '[]'); } catch { return []; }
+    }
+    function saveWatchlist(list) {
+      localStorage.setItem('cte_watchlist', JSON.stringify(list));
+    }
+    function isInWatchlist(nct) {
+      return getWatchlist().some(w => w.NCT === nct);
+    }
+
+    function toggleWatchlistFilter() {
+      showWatchlistOnly = !showWatchlistOnly;
+      const btn = document.getElementById('watchlistToggleBtn');
+      if (showWatchlistOnly) {
+        btn.innerHTML = `<span class="wl-icon">★</span> Saved Trials (Active)`;
+        btn.classList.add('active-filter');
+      } else {
+        btn.innerHTML = `<span class="wl-icon">☆</span> Show Saved`;
+        btn.classList.remove('active-filter');
+      }
+      applyAnalyticsFilters();
+    }
+
+    function toggleWatchlist(nct) {
+      const list = getWatchlist();
+      const idx = list.findIndex(w => w.NCT === nct);
+      const record = allData.find(r => r.NCT === nct) || uniqueData.find(r => r.NCT === nct);
+      if (idx > -1) {
+        list.splice(idx, 1);
+        showToast(`Removed ${nct} from watchlist`);
+      } else if (record) {
+        list.push({ NCT: record.NCT, Title: record.Title, Status: record.Status, Phase: record.Phase, Keyword: record.Keyword, URL: record.URL, 'Start Date': record['Start Date'] });
+        showToast(`★ Saved ${nct} to watchlist`);
+      }
+      saveWatchlist(list);
+
+      if (showWatchlistOnly) {
+        applyAnalyticsFilters();
+      } else {
+        renderTable();
+      }
+    }
+
+    // ==================== RIS EXPORT ====================
+    function buildRIS(records) {
+      const clean = s => (s || '').replace(/\r\n/g, ' ').replace(/\r/g, ' ').replace(/\n/g, ' ').trim();
+      const formatRISDate = (ds) => {
+        if (!ds) return '';
+        const d = new Date(ds);
+        if (isNaN(d.getTime())) return '';
+        return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/`;
+      };
+      const today = new Date();
+      const rdDate = `${today.getFullYear()}/${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getDate()).padStart(2, '0')}/`;
+
+      return records.map(r => {
+        const lines = ['TY  - DBASE', 'DP  - National Library of Medicine (US)', 'PP  - Bethesda (MD)'];
+        const id = r.NCT ? r.NCT.replace('NCT', '') : '';
+        if (id) lines.push(`ID  - ${id}`);
+        const summaryText = r.DetailedDescription || r.Summary || '';
+        const abLines = summaryText.split(/\r?\n/).filter(p => p.trim() !== '');
+        if (abLines.length > 0) abLines.forEach(line => lines.push(`AB  - ${clean(line)}`));
+        if (r.NCT) lines.push(`AN  - ${r.NCT}`);
+        lines.push(`SF  - ClinicalTrials.gov`);
+        if (r.Title) lines.push(`ST  - ${clean(r.Title)}`);
+        if (r.OfficialTitle || r.Title) lines.push(`TI  - ${clean(r.OfficialTitle || r.Title)}`);
+        const y1 = formatRISDate(r['Start Date']);
+        if (y1) lines.push(`Y1  - ${y1}`);
+        const y2 = formatRISDate(r['Primary Completion']);
+        if (y2) lines.push(`Y2  - ${y2}`);
+        if (r.Sponsor) lines.push(`C1  - ${clean(r.Sponsor)}`);
+        if (r.Status) lines.push(`C2  - ${clean(r.Status)}`);
+        const c3 = formatRISDate(r['Study Completion']);
+        if (c3) lines.push(`C3  - ${c3}`);
+        if (r['Study Type']) lines.push(`C5  - ${clean(r['Study Type'])}`);
+        const resultsStatus = r['Has Results'] === 'Yes' ? 'Results Submitted' : 'No Results Submitted';
+        lines.push(`C6  - ${resultsStatus}`);
+        lines.push(`RD  - ${rdDate}`);
+        lines.push(`UR  - ${r.URL}`);
+        lines.push('ER  - ');
+        return lines.join('\r\n');
+      }).join('\r\n\r\n');
+    }
+
+    function exportRIS() {
+      const dataToExport = getRecordsToExport();
+      if (!dataToExport.length) { showToast('No data to export'); return; }
+      const ris = buildRIS(dataToExport);
+      const blob = new Blob([ris], { type: 'application/x-research-info-systems' });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+      a.download = `clinical_trials_${dataToExport.length}.ris`; a.click();
+      showToast(`RIS exported (${dataToExport.length} trials)`);
+    }
+
+    // ==================== EXCEL EXPORT ====================
+    const EXCEL_COLUMNS = [
+      // Identification
+      { key: 'NCT', label: 'NCT ID', group: 'Identification' },
+      { key: 'Title', label: 'Brief Title', group: 'Identification' },
+      { key: 'OfficialTitle', label: 'Official Title', group: 'Identification' },
+      { key: 'URL', label: 'ClinicalTrials.gov URL', group: 'Identification' },
+      { key: 'Keyword', label: 'Search Keyword', group: 'Identification' },
+      // Status & Design
+      { key: 'Status', label: 'Status', group: 'Status & Design' },
+      { key: 'Phase', label: 'Phase', group: 'Status & Design' },
+      { key: 'Study Type', label: 'Study Type', group: 'Status & Design' },
+      { key: 'Primary Purpose', label: 'Primary Purpose', group: 'Status & Design' },
+      { key: 'Allocation', label: 'Allocation', group: 'Status & Design' },
+      { key: 'Masking', label: 'Masking', group: 'Status & Design' },
+      { key: 'Intervention Model', label: 'Intervention Model', group: 'Status & Design' },
+      { key: 'Observational Model', label: 'Observational Model', group: 'Status & Design' },
+      { key: 'Time Perspective', label: 'Time Perspective', group: 'Status & Design' },
+      { key: 'Has Results', label: 'Has Results', group: 'Status & Design' },
+      // Dates & Enrollment
+      { key: 'Start Date', label: 'Start Date', group: 'Dates & Enrollment' },
+      { key: 'Primary Completion', label: 'Primary Completion Date', group: 'Dates & Enrollment' },
+      { key: 'Study Completion', label: 'Study Completion Date', group: 'Dates & Enrollment' },
+      { key: 'Enrollment', label: 'Enrollment (N)', group: 'Dates & Enrollment' },
+      // Sponsor & Team
+      { key: 'Sponsor', label: 'Lead Sponsor', group: 'Sponsor & Team' },
+      { key: 'PI', label: 'Principal Investigator', group: 'Sponsor & Team' },
+      // Conditions & Interventions
+      { key: 'Conditions', label: 'Conditions', group: 'Conditions & Interventions' },
+      { key: 'Keywords', label: 'Trial Keywords', group: 'Conditions & Interventions' },
+      { key: 'Interventions', label: 'Interventions', group: 'Conditions & Interventions' },
+      { key: 'Arms', label: 'Study Arms', group: 'Conditions & Interventions' },
+      // Outcomes
+      { key: 'Primary Outcomes', label: 'Primary Outcomes', group: 'Outcomes' },
+      { key: 'Secondary Outcomes', label: 'Secondary Outcomes', group: 'Outcomes' },
+      // Eligibility
+      { key: 'Min Age', label: 'Minimum Age', group: 'Eligibility' },
+      { key: 'Max Age', label: 'Maximum Age', group: 'Eligibility' },
+      { key: 'Sex', label: 'Sex', group: 'Eligibility' },
+      { key: 'Healthy Volunteers', label: 'Healthy Volunteers', group: 'Eligibility' },
+      { key: 'EligibilityCriteria', label: 'Eligibility Criteria', group: 'Eligibility' },
+      // Locations
+      { key: 'Countries', label: 'Countries', group: 'Locations' },
+      { key: 'Locations', label: 'Locations (All)', group: 'Locations' },
+      // Summaries
+      { key: 'Summary', label: 'Brief Summary', group: 'Summaries' },
+      { key: 'DetailedDescription', label: 'Detailed Description', group: 'Summaries' },
+      // References
+      { key: 'Publications', label: 'Publications / References', group: 'References' },
+    ];
+
+    // Core preset: basic fields for quick overview
+    const EXCEL_PRESET_CORE = ['NCT', 'Title', 'URL', 'Status', 'Phase', 'Study Type', 'Primary Purpose', 'Start Date', 'Study Completion', 'Enrollment', 'Sponsor', 'Conditions', 'Keyword'];
+    // Literature review preset: everything needed for systematic review
+    const EXCEL_PRESET_LIT = ['NCT', 'Title', 'OfficialTitle', 'URL', 'Status', 'Phase', 'Study Type', 'Primary Purpose', 'Allocation', 'Masking', 'Intervention Model', 'Has Results', 'Start Date', 'Primary Completion', 'Study Completion', 'Enrollment', 'Sponsor', 'PI', 'Conditions', 'Keywords', 'Interventions', 'Arms', 'Primary Outcomes', 'Secondary Outcomes', 'Min Age', 'Max Age', 'Sex', 'Healthy Volunteers', 'EligibilityCriteria', 'Countries', 'Summary', 'Publications', 'Keyword'];
+
+    let excelSelectedCols = new Set(EXCEL_PRESET_LIT);
+
+    function openExcelModal() {
+      const dataToExport = getRecordsToExport();
+      const scope = selectedNCTs.size > 0
+        ? `Exporting ${selectedNCTs.size} selected trial(s)`
+        : `Exporting all ${filteredData.length} filtered trial(s)`;
+      document.getElementById('excelExportScope').textContent = scope;
+      renderExcelColGrid();
+      document.getElementById('excelOverlay').classList.add('visible');
+    }
+    function closeExcelModal() {
+      document.getElementById('excelOverlay').classList.remove('visible');
+    }
+    function renderExcelColGrid() {
+      // Group columns
+      const groups = {};
+      EXCEL_COLUMNS.forEach(col => {
+        if (!groups[col.group]) groups[col.group] = [];
+        groups[col.group].push(col);
+      });
+      let html = '';
+      Object.entries(groups).forEach(([grp, cols]) => {
+        html += `<div style="grid-column:1/-1;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:var(--accent);margin-top:8px;padding-bottom:4px;border-bottom:1px solid var(--border);">${grp}</div>`;
+        cols.forEach(col => {
+          const checked = excelSelectedCols.has(col.key);
+          html += `<label style="display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12.5px;color:var(--text);transition:all 0.15s;background:${checked ? 'rgba(37,99,235,0.06)' : 'var(--surface2)'};" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+            <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleExcelCol('${col.key}',this.checked)" style="accent-color:var(--accent);width:14px;height:14px;flex-shrink:0;">
+            <span>${col.label}</span>
+          </label>`;
+        });
+      });
+      document.getElementById('excelColGrid').innerHTML = html;
+      updateExcelColCount();
+    }
+    function toggleExcelCol(key, checked) {
+      if (checked) excelSelectedCols.add(key); else excelSelectedCols.delete(key);
+      updateExcelColCount();
+      // Update bg color of label
+      const grid = document.getElementById('excelColGrid');
+      const labels = grid.querySelectorAll('label');
+      labels.forEach(lbl => {
+        const cb = lbl.querySelector('input[type=checkbox]');
+        if (cb) lbl.style.background = cb.checked ? 'rgba(37,99,235,0.06)' : 'var(--surface2)';
+      });
+    }
+    function updateExcelColCount() {
+      const n = excelSelectedCols.size;
+      document.getElementById('excelColCount').textContent = `${n} column${n !== 1 ? 's' : ''} selected`;
+      document.getElementById('excelExportBtn').disabled = n === 0;
+    }
+    function excelSelectAll() { EXCEL_COLUMNS.forEach(c => excelSelectedCols.add(c.key)); renderExcelColGrid(); }
+    function excelSelectNone() { excelSelectedCols.clear(); renderExcelColGrid(); }
+    function excelSelectPreset(preset) {
+      excelSelectedCols = new Set(preset === 'core' ? EXCEL_PRESET_CORE : EXCEL_PRESET_LIT);
+      renderExcelColGrid();
+    }
+
+    function doExportExcel() {
+      const dataToExport = getRecordsToExport();
+      if (!dataToExport.length) { showToast('No data to export', true); return; }
+      if (excelSelectedCols.size === 0) { showToast('Please select at least one column', true); return; }
+
+      // Build ordered columns (preserve EXCEL_COLUMNS order)
+      const cols = EXCEL_COLUMNS.filter(c => excelSelectedCols.has(c.key));
+
+      // Build worksheet data
+      const header = cols.map(c => c.label);
+      const rows = dataToExport.map(r => {
+        return cols.map(c => {
+          const val = r[c.key];
+          if (val === undefined || val === null) return '';
+          // Clean pipe-separated lists to newlines for readability
+          if (typeof val === 'string' && val.includes(' | ')) return val.split(' | ').join('\n');
+          return String(val);
+        });
+      });
+
+      const wsData = [header, ...rows];
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+      // Column widths
+      ws['!cols'] = cols.map(c => {
+        const wideKeys = ['Title', 'OfficialTitle', 'Summary', 'DetailedDescription', 'EligibilityCriteria', 'Primary Outcomes', 'Secondary Outcomes', 'Interventions', 'Arms', 'Publications'];
+        return { wch: wideKeys.includes(c.key) ? 60 : 22 };
+      });
+
+      // Style header row (bold + fill) — works with xlsx-style; skip if not available
+      // Freeze top row
+      ws['!freeze'] = { xSplit: 0, ySplit: 1 };
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Clinical Trials');
+
+      // Metadata sheet
+      const metaData = [
+        ['Export Information', ''],
+        ['Generated', new Date().toLocaleString()],
+        ['Total Records', dataToExport.length],
+        ['Columns Exported', cols.length],
+        ['Data Source', 'ClinicalTrials.gov API v2'],
+        ['Tool', 'Clinical Trial Explorer'],
+      ];
+      const wsMeta = XLSX.utils.aoa_to_sheet(metaData);
+      wsMeta['!cols'] = [{ wch: 22 }, { wch: 40 }];
+      XLSX.utils.book_append_sheet(wb, wsMeta, 'Export Info');
+
+      const filename = `Clinical_Trials_Export_${dataToExport.length}_records_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      XLSX.writeFile(wb, filename);
+      showToast(`✓ Excel exported: ${dataToExport.length} trials, ${cols.length} columns`);
+      closeExcelModal();
+    }
+
     const viewSettings = {
       details: [
         { id: 'basics', label: 'Basic Info (Dates, Study Type, etc.)', visible: true },
@@ -2111,37 +3377,21 @@
     // ==================== PAGE SIZE & VIEW CUSTOMIZER ====================
     function changePageSize(val) {
       pageSize = parseInt(val, 10);
-      currentPage = 1;
-      openNCT = null;
-      renderTable();
+      currentPage = 1; openNCT = null; renderTable();
     }
 
     function initViewPicker() {
       const detWrap = document.getElementById('detailToggles');
-
       let html = '';
       viewSettings.details.forEach((d, i) => {
-        html += `
-          <label class="vp-label">
-            <input type="checkbox" ${d.visible ? 'checked' : ''} onchange="toggleDetail(${i}, this.checked)">
-            ${d.label}
-          </label>
-        `;
+        html += `<label class="vp-label"><input type="checkbox" ${d.visible ? 'checked' : ''} onchange="toggleDetail(${i}, this.checked)"> ${d.label}</label>`;
       });
       detWrap.innerHTML = html;
     }
 
-    function toggleDetail(idx, val) {
-      viewSettings.details[idx].visible = val;
-      renderTable();
-    }
+    function toggleDetail(idx, val) { viewSettings.details[idx].visible = val; renderTable(); }
+    function toggleViewPicker(e) { if (e) e.stopPropagation(); document.getElementById('viewPickerPopup').classList.toggle('show'); }
 
-    function toggleViewPicker(e) {
-      if (e) e.stopPropagation();
-      document.getElementById('viewPickerPopup').classList.toggle('show');
-    }
-
-    // Close view picker when clicking outside
     document.addEventListener('click', (e) => {
       const popup = document.getElementById('viewPickerPopup');
       if (popup && popup.classList.contains('show') && !e.target.closest('.view-picker-wrap')) {
@@ -2149,22 +3399,21 @@
       }
     });
 
-    // ==================== UI HELPERS ====================
     function toggleAnalytics() {
       const content = document.getElementById('analyticsContent');
       const icon = document.getElementById('analyticsToggleIcon');
       if (content.style.display === 'none') {
-        content.style.display = 'block';
-        icon.textContent = '▼';
+        content.style.display = 'block'; icon.textContent = '▼';
       } else {
-        content.style.display = 'none';
-        icon.textContent = '▶';
+        content.style.display = 'none'; icon.textContent = '▶';
       }
     }
 
     // ==================== SEARCH ====================
     async function doSearch() {
       const raw = document.getElementById('keywordsInput').value;
+      saveSearchToHistory(raw); // Save to history
+
       const keywords = raw.split(',').map(k => k.trim()).filter(Boolean);
       if (!keywords.length) { showToast('Please enter at least one keyword'); return; }
 
@@ -2248,12 +3497,10 @@
 
           const eligCriteria = el.eligibilityCriteria || '';
 
-          // Publications Extraction
           const refs = p.referencesModule?.references || [];
           const publicationsText = refs.map(ref => ref.citation || `PMID: ${ref.pmid}`).filter(Boolean).join(' | ');
           const publicationsData = refs.map(ref => ({ citation: ref.citation, pmid: ref.pmid }));
 
-          // Apply formatting to enum fields
           const sex = formatEnum(el.sex || '');
           const healthy = el.healthyVolunteers === true ? 'Yes' : el.healthyVolunteers === false ? 'No' : '';
           const allocation = formatEnum(ds.designInfo?.allocation || '');
@@ -2269,9 +3516,7 @@
           const primaryComp = (st.primaryCompletionDateStruct || {}).date || '';
           const studyComp = (st.completionDateStruct || {}).date || '';
 
-          const interventions = (p.armsInterventionsModule?.interventions || [])
-            .map(i => `${i.type || ''}: ${i.name || ''}`).filter(Boolean);
-
+          const interventions = (p.armsInterventionsModule?.interventions || []).map(i => `${i.type || ''}: ${i.name || ''}`).filter(Boolean);
           const armsList = arms.map(a => `${a.label || a.type || ''}: ${a.description || ''}`).filter(Boolean);
           const hasResults = study.hasResults ? 'Yes' : 'No';
 
@@ -2294,12 +3539,12 @@
             'Min Age': el.minimumAge || '', 'Max Age': el.maximumAge || '',
             Sex: sex, 'Healthy Volunteers': healthy,
             EligibilityCriteria: eligCriteria,
-            Publications: publicationsText, _publicationsData: publicationsData, // Split data for UI & CSV
+            Publications: publicationsText, _publicationsData: publicationsData,
             Locations: locStr, _locArray: locArray, Countries: countries.join('; '), _countries: countries,
             _centralContacts: centralContacts, _locationContacts: locationContacts
           });
         }
-
+        document.getElementById('loaderCount').textContent = `${allData.length} trials fetched...`;
         nextToken = data.nextPageToken || null;
         if (!nextToken) break;
       }
@@ -2323,23 +3568,19 @@
       return { locArray: parts, locStr: parts.join('; '), countries: [...new Set(countries)] };
     }
 
-    // ==================== PROCESS ====================
     function processData() {
       const seen = new Set();
-      uniqueData = [];
-      duplicateData = [];
+      uniqueData = []; duplicateData = [];
       for (const row of allData) {
         if (!seen.has(row.NCT)) { seen.add(row.NCT); uniqueData.push(row); }
         else duplicateData.push(row);
       }
       activeOverview = 'unique';
       filteredData = [...uniqueData];
-      activeFilters.status.clear();
-      activeFilters.country.clear();
+      activeFilters.status.clear(); activeFilters.country.clear(); activeFilters.keyword.clear();
       activeFilters.yearRange = { min: null, max: null };
       activeFilters.dropdowns = { studyType: '', phase: '', allocation: '', masking: '', purpose: '', intModel: '', sex: '', healthy: '', hasResults: '' };
-      selectedNCTs.clear();
-      openNCT = null;
+      selectedNCTs.clear(); openNCT = null;
       populateAdvancedFilters();
     }
 
@@ -2349,7 +3590,6 @@
       return uniqueData;
     }
 
-    // ==================== ADVANCED FILTERS ====================
     function populateAdvancedFilters() {
       const types = new Set(), phases = new Set(), allocs = new Set(), masks = new Set();
       const purposes = new Set(), intModels = new Set(), sexes = new Set(), healthies = new Set();
@@ -2386,30 +3626,15 @@
       fill('selHasResults', results, 'Results (Yes/No)', 'hasResults');
     }
 
-    function handleDropdownChange(key, value) {
-      activeFilters.dropdowns[key] = value;
-      applyAnalyticsFilters();
-    }
-
-    function clearDropdownFilter(key) {
-      activeFilters.dropdowns[key] = '';
-      const elId = 'sel' + key.charAt(0).toUpperCase() + key.slice(1);
-      const el = document.getElementById(elId); if (el) el.value = '';
-      applyAnalyticsFilters();
-    }
-
-    // Updates the CSS classes to make active filters glow
+    function handleDropdownChange(key, value) { activeFilters.dropdowns[key] = value; applyAnalyticsFilters(); }
+    function clearDropdownFilter(key) { activeFilters.dropdowns[key] = ''; const el = document.getElementById('sel' + key.charAt(0).toUpperCase() + key.slice(1)); if (el) el.value = ''; applyAnalyticsFilters(); }
     function updateFilterGlows() {
       const dropKeys = ['studyType', 'phase', 'allocation', 'masking', 'purpose', 'intModel', 'sex', 'healthy', 'hasResults'];
       dropKeys.forEach(key => {
-        const elId = 'sel' + key.charAt(0).toUpperCase() + key.slice(1);
-        const el = document.getElementById(elId);
+        const el = document.getElementById('sel' + key.charAt(0).toUpperCase() + key.slice(1));
         if (el) {
-          if (activeFilters.dropdowns[key] && activeFilters.dropdowns[key] !== '') {
-            el.classList.add('active-filter');
-          } else {
-            el.classList.remove('active-filter');
-          }
+          if (activeFilters.dropdowns[key] && activeFilters.dropdowns[key] !== '') el.classList.add('active-filter');
+          else el.classList.remove('active-filter');
         }
       });
     }
@@ -2419,13 +3644,11 @@
       if (isChecked) selectedNCTs.add(nct); else selectedNCTs.delete(nct);
       updateSelectionUI();
     }
-
     function toggleSelectAll() {
       const cb = document.getElementById('selectAllCheckbox');
       filteredData.forEach(r => { if (cb.checked) selectedNCTs.add(r.NCT); else selectedNCTs.delete(r.NCT); });
       renderTable(); updateSelectionUI();
     }
-
     function updateSelectionUI() {
       const cb = document.getElementById('selectAllCheckbox');
       if (cb) {
@@ -2433,335 +3656,293 @@
         const someSelected = filteredData.some(r => selectedNCTs.has(r.NCT));
         cb.checked = allSelected; cb.indeterminate = someSelected && !allSelected;
       }
+
+      const compareBtn = document.getElementById('compareBtn');
+      if (compareBtn) {
+        const cnt = selectedNCTs.size;
+        compareBtn.innerHTML = `⚖️ Compare (${cnt})`;
+        compareBtn.disabled = cnt < 2 || cnt > 3;
+      }
+
       const exportInfoEl = document.getElementById('exportInfo');
       if (exportInfoEl) exportInfoEl.textContent = selectedNCTs.size > 0 ? `${selectedNCTs.size} selected for export` : `${filteredData.length} filtered records available`;
     }
 
-    // ==================== RENDER ALL ====================
-    function renderAll() {
-      renderMetrics();
-      updateSliderBounds();
-      renderCharts();
-      renderKeywordTable();
-      renderTable();
+    // ==================== SIDE-BY-SIDE COMPARISON MODAL ====================
+    function openCompareModal() {
+      if (selectedNCTs.size < 2 || selectedNCTs.size > 3) {
+        showToast("Select 2 or 3 trials to compare", true); return;
+      }
+      // Deduplicate: one record per NCT from allData
+      const seen = new Set();
+      const records = [];
+      for (const nct of selectedNCTs) {
+        const r = allData.find(d => d.NCT === nct);
+        if (r && !seen.has(r.NCT)) { seen.add(r.NCT); records.push(r); }
+      }
+      buildCompareTable(records);
+      document.getElementById('compareOverlay').classList.add('visible');
     }
 
-    // ==================== METRICS ====================
+    function closeCompareModal() {
+      document.getElementById('compareOverlay').classList.remove('visible');
+    }
+
+    function buildCompareTable(records) {
+      const esc = s => (s || '').toString().replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const br = s => esc(s).replace(/\n/g, '<br>');
+
+      const getInclusionExclusion = (crit) => {
+        let inc = '', exc = '';
+        if (crit && crit.includes('Exclusion Criteria:')) {
+          const parts = crit.split('Exclusion Criteria:');
+          inc = parts[0].replace('Inclusion Criteria:', '').trim();
+          exc = parts[1].trim();
+        } else {
+          inc = crit || '';
+        }
+        return { inc, exc };
+      };
+
+      const colW = records.length <= 3 ? `${Math.floor(80 / records.length)}%` : '220px';
+
+      const sections = [
+        {
+          heading: '📋 Identification',
+          fields: [
+            { label: 'NCT ID', get: r => `<a href="${r.URL}" target="_blank" style="color:var(--accent); font-family:'JetBrains Mono',monospace; font-weight:700; font-size:13px;">${r.NCT}</a>` },
+            { label: 'Official Title', get: r => `<div style="font-size:12.5px;line-height:1.5;">${esc(r.OfficialTitle || r.Title || '—')}</div>` },
+            { label: 'Status', get: r => badgeBadge(r.Status) },
+            { label: 'Phase', get: r => r.Phase || '—' },
+            { label: 'Study Type', get: r => r['Study Type'] || '—' },
+            { label: 'Primary Purpose', get: r => r['Primary Purpose'] || '—' },
+          ]
+        },
+        {
+          heading: '📅 Dates & Enrollment',
+          fields: [
+            { label: 'Start Date', get: r => r['Start Date'] || '—' },
+            { label: 'Primary Completion', get: r => r['Primary Completion'] || '—' },
+            { label: 'Study Completion', get: r => r['Study Completion'] || '—' },
+            { label: 'Enrollment', get: r => r.Enrollment ? `<strong>${r.Enrollment}</strong> participants` : '—' },
+            { label: 'Has Results', get: r => r['Has Results'] === 'Yes' ? '<span style="color:var(--green);font-weight:700;">✓ Yes</span>' : '<span style="color:var(--muted);">No</span>' },
+          ]
+        },
+        {
+          heading: '🏥 Sponsor & Design',
+          fields: [
+            { label: 'Sponsor', get: r => esc(r.Sponsor) || '—' },
+            { label: 'Principal Investigator', get: r => esc(r.PI) || '—' },
+            { label: 'Allocation', get: r => r.Allocation || '—' },
+            { label: 'Masking', get: r => r.Masking || '—' },
+            { label: 'Intervention Model', get: r => r['Intervention Model'] || '—' },
+          ]
+        },
+        {
+          heading: '🔬 Conditions & Interventions',
+          fields: [
+            { label: 'Conditions', get: r => (r.Conditions || '').split(';').map(c => c.trim()).filter(Boolean).map(c => `<div style="margin-bottom:5px">▪ ${esc(c)}</div>`).join('') || '—' },
+            { label: 'Interventions', get: r => (r.Interventions || '').split(' | ').map(c => c.trim()).filter(Boolean).map(c => `<div style="margin-bottom:5px">▪ ${esc(c)}</div>`).join('') || '—' },
+            { label: 'Study Arms', get: r => (r.Arms || '').split(' | ').map(c => c.trim()).filter(Boolean).map(c => `<div style="margin-bottom:5px">▪ ${esc(c)}</div>`).join('') || '—' },
+          ]
+        },
+        {
+          heading: '🎯 Outcomes',
+          fields: [
+            { label: 'Primary Outcomes', get: r => (r['Primary Outcomes'] || '').split(' | ').map(c => c.trim()).filter(Boolean).map(c => `<div style="margin-bottom:5px;font-size:12.5px;">▪ ${esc(c)}</div>`).join('') || '—' },
+            { label: 'Secondary Outcomes', get: r => (r['Secondary Outcomes'] || '').split(' | ').map(c => c.trim()).filter(Boolean).map(c => `<div style="margin-bottom:5px;font-size:12.5px;">▪ ${esc(c)}</div>`).join('') || '—' },
+          ]
+        },
+        {
+          heading: '👤 Eligibility',
+          fields: [
+            { label: 'Age Range', get: r => [r['Min Age'], r['Max Age']].filter(Boolean).join(' – ') || '—' },
+            { label: 'Sex', get: r => formatSexWithSymbol(r.Sex) },
+            { label: 'Healthy Volunteers', get: r => r['Healthy Volunteers'] || '—' },
+            { label: 'Inclusion Criteria', get: r => `<div class="compare-scroll-box" style="font-size:12px;line-height:1.6;">${br(getInclusionExclusion(r.EligibilityCriteria).inc) || '—'}</div>` },
+            { label: 'Exclusion Criteria', get: r => `<div class="compare-scroll-box" style="font-size:12px;line-height:1.6;">${br(getInclusionExclusion(r.EligibilityCriteria).exc) || '—'}</div>` },
+          ]
+        },
+        {
+          heading: '📍 Locations',
+          fields: [
+            { label: 'Countries', get: r => (r.Countries || '').split(';').map(c => c.trim()).filter(Boolean).map(c => `<span style="display:inline-block;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:2px 8px;margin:2px 3px 2px 0;font-size:11.5px;">${esc(c)}</span>`).join('') || '—' },
+          ]
+        }
+      ];
+
+      // Build header with title + NCT
+      let html = `<table class="compare-table">
+        <thead>
+          <tr>
+            <th style="width:160px; min-width:160px;">Parameter</th>`;
+      records.forEach((r, i) => {
+        const colors = ['#2563eb', '#0ea5e9', '#059669', '#d97706', '#e11d48', '#7c3aed', '#0284c7', '#be185d'];
+        const col = colors[i % colors.length];
+        html += `<th style="width:${colW}; min-width:180px;">
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <a href="${r.URL}" target="_blank" style="font-family:'JetBrains Mono',monospace;font-size:11px;background:${col}20;color:${col};border:1px solid ${col}40;border-radius:6px;padding:3px 8px;display:inline-block;text-decoration:none;font-weight:700;">${r.NCT}</a>
+            <div style="font-size:12px;font-weight:600;color:var(--text);line-height:1.4;margin-top:2px;">${esc((r.Title || '').substring(0, 80))}${(r.Title || '').length > 80 ? '…' : ''}</div>
+            <div style="margin-top:4px;">${badgeBadge(r.Status)}</div>
+          </div>
+        </th>`;
+      });
+      html += `</tr></thead><tbody>`;
+
+      sections.forEach(section => {
+        // Section heading row
+        html += `<tr><td colspan="${records.length + 1}" style="background:var(--surface2);padding:10px 16px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:var(--accent);border-bottom:2px solid var(--border);position:sticky;left:0;">${section.heading}</td></tr>`;
+        section.fields.forEach(f => {
+          html += `<tr><td style="font-size:11.5px;">${f.label}</td>`;
+          records.forEach(r => {
+            let val = f.get(r);
+            if (!val) val = '—';
+            html += `<td>${val}</td>`;
+          });
+          html += `</tr>`;
+        });
+      });
+
+      html += `</tbody></table>`;
+      document.getElementById('compareContent').innerHTML = html;
+    }
+
+
+    function renderAll() { renderMetrics(); updateSliderBounds(); renderCharts(); renderKeywordList(); renderSponsorList(); renderTable(); }
+
     function renderMetrics() {
       animateCount('metTotal', allData.length);
       animateCount('metDupes', duplicateData.length);
       animateCount('metUnique', uniqueData.length);
       updateOverviewStyles();
     }
-
     function animateCount(id, target) {
-      const el = document.getElementById(id); let cur = 0;
-      const step = Math.ceil(target / 40);
+      const el = document.getElementById(id); let cur = 0; const step = Math.ceil(target / 40);
       const t = setInterval(() => { cur = Math.min(cur + step, target); el.textContent = cur.toLocaleString(); if (cur >= target) clearInterval(t); }, 30);
     }
-
     function updateOverviewStyles() {
-      document.getElementById('cardTotal').style.background = activeOverview === 'total' ? '#eff6ff' : 'var(--surface2)';
-      document.getElementById('cardTotal').style.borderColor = activeOverview === 'total' ? '#93c5fd' : 'var(--border)';
-      document.getElementById('cardDupes').style.background = activeOverview === 'dupes' ? '#fff1f2' : 'var(--surface2)';
-      document.getElementById('cardDupes').style.borderColor = activeOverview === 'dupes' ? '#fecdd3' : 'var(--border)';
-      document.getElementById('cardUnique').style.background = activeOverview === 'unique' ? '#f0f9ff' : 'var(--surface2)';
-      document.getElementById('cardUnique').style.borderColor = activeOverview === 'unique' ? '#bae6fd' : 'var(--border)';
+      ['cardTotal', 'cardDupes', 'cardUnique'].forEach(id => {
+        document.getElementById(id).classList.remove('active-metric');
+      });
+      if (activeOverview === 'total') document.getElementById('cardTotal').classList.add('active-metric');
+      if (activeOverview === 'dupes') document.getElementById('cardDupes').classList.add('active-metric');
+      if (activeOverview === 'unique') document.getElementById('cardUnique').classList.add('active-metric');
     }
+    function setOverviewFilter(type) { if (activeOverview === type) return; activeOverview = type; updateOverviewStyles(); populateAdvancedFilters(); updateSliderBounds(); renderCharts(); applyAnalyticsFilters(); }
 
-    function setOverviewFilter(type) {
-      if (activeOverview === type) return;
-      activeOverview = type;
-      updateOverviewStyles();
-      populateAdvancedFilters();
-      updateSliderBounds();
-      renderCharts();
-      applyAnalyticsFilters();
-    }
-
-    // ==================== CHARTS ====================
     const COLS = ['#2563eb', '#0ea5e9', '#059669', '#d97706', '#e11d48', '#7c3aed', '#0284c7', '#be185d', '#0f766e', '#6d28d9'];
-
     function renderCharts() { renderStatusChart(); renderYearChart(); renderWorldMap(); }
     function getColForIdx(i) { return COLS[i % COLS.length]; }
     function isSelected(type, val) { return activeFilters[type].has(String(val)); }
 
     function renderStatusChart() {
-      const baseData = getBaseData();
-      const counts = {};
+      const baseData = getBaseData(); const counts = {};
       for (const r of baseData) counts[r.Status] = (counts[r.Status] || 0) + 1;
-      const labels = Object.keys(counts);
-      const vals = labels.map(k => counts[k]);
+      const labels = Object.keys(counts); const vals = labels.map(k => counts[k]);
+
+      const isDark = document.body.classList.contains('dark-mode');
+      const textColor = isDark ? '#cbd5e1' : '#64748b';
+      const activeTextColor = isDark ? '#f1f5f9' : '#0f172a';
+      const strokeColor = isDark ? '#1e293b' : '#ffffff';
+
       if (statusChartInst) statusChartInst.destroy();
       statusChartInst = new Chart(document.getElementById('statusChart'), {
         type: 'doughnut',
-        data: {
-          labels,
-          datasets: [{
-            data: vals,
-            backgroundColor: labels.map((l, i) => activeFilters.status.size === 0 ? getColForIdx(i) : (isSelected('status', l) ? getColForIdx(i) : '#e2e8f0')),
-            borderColor: '#ffffff', borderWidth: 2, hoverOffset: 8
-          }]
-        },
-        options: {
-          maintainAspectRatio: false,
-          layout: { padding: { bottom: 10 } },
-          plugins: {
-            legend: {
-              position: 'bottom', align: 'center',
-              labels: {
-                color: '#64748b', font: { family: 'Inter', size: 11, weight: '500' }, padding: 12, usePointStyle: true,
-                generateLabels(chart) {
-                  return chart.data.labels.map((label, i) => ({
-                    text: `${label} (${vals[i]})`, fillStyle: getColForIdx(i), strokeStyle: 'transparent',
-                    fontColor: activeFilters.status.size === 0 || isSelected('status', label) ? '#0f172a' : '#64748b',
-                    index: i, pointStyle: 'circle'
-                  }));
-                }
-              },
-              onClick(e, item) { toggleFilter('status', statusChartInst.data.labels[item.index]); }
-            },
-            tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed} (${((ctx.parsed / Math.max(baseData.length, 1)) * 100).toFixed(1)}%)` } }
-          },
-          cutout: '65%',
-          onClick(e, elements) { if (!elements.length) return; toggleFilter('status', statusChartInst.data.labels[elements[0].index]); }
-        }
+        data: { labels, datasets: [{ data: vals, backgroundColor: labels.map((l, i) => activeFilters.status.size === 0 ? getColForIdx(i) : (isSelected('status', l) ? getColForIdx(i) : (isDark ? '#334155' : '#e2e8f0'))), borderColor: strokeColor, borderWidth: 2, hoverOffset: 8 }] },
+        options: { maintainAspectRatio: false, layout: { padding: { bottom: 10 } }, plugins: { legend: { position: 'bottom', align: 'center', labels: { color: textColor, font: { family: 'Inter', size: 11, weight: '500' }, padding: 12, usePointStyle: true, generateLabels(chart) { return chart.data.labels.map((label, i) => ({ text: `${label} (${vals[i]})`, fillStyle: getColForIdx(i), strokeStyle: 'transparent', fontColor: activeFilters.status.size === 0 || isSelected('status', label) ? activeTextColor : textColor, index: i, pointStyle: 'circle' })); } }, onClick(e, item) { toggleFilter('status', statusChartInst.data.labels[item.index]); } }, tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed} (${((ctx.parsed / Math.max(baseData.length, 1)) * 100).toFixed(1)}%)` } } }, cutout: '65%', onClick(e, elements) { if (!elements.length) return; toggleFilter('status', statusChartInst.data.labels[elements[0].index]); } }
       });
     }
 
-    // ==================== YEAR RANGE (NEW DESIGN) ====================
     function updateSliderBounds() {
-      const baseData = getBaseData();
-      let min = Infinity, max = -Infinity;
-      for (const r of baseData) {
-        const y = r['Start Date'] ? new Date(r['Start Date']).getFullYear() : null;
-        if (y && y > 1980) { if (y < min) min = y; if (y > max) max = y; }
-      }
+      const baseData = getBaseData(); let min = Infinity, max = -Infinity;
+      for (const r of baseData) { const y = r['Start Date'] ? new Date(r['Start Date']).getFullYear() : null; if (y && y > 1980) { if (y < min) min = y; if (y > max) max = y; } }
       if (min === Infinity) { min = 2000; max = new Date().getFullYear(); }
       dataMinYear = min; dataMaxYear = max;
-
-      const sliderMin = document.getElementById('yearRangeMin');
-      const sliderMax = document.getElementById('yearRangeMax');
-      sliderMin.min = min; sliderMin.max = max;
-      sliderMax.min = min; sliderMax.max = max;
-
-      if (activeFilters.yearRange.min === null) {
-        activeFilters.yearRange.min = min; activeFilters.yearRange.max = max;
-        sliderMin.value = min; sliderMax.value = max;
-      } else {
-        sliderMin.value = activeFilters.yearRange.min;
-        sliderMax.value = activeFilters.yearRange.max;
-      }
+      const sliderMin = document.getElementById('yearRangeMin'), sliderMax = document.getElementById('yearRangeMax');
+      sliderMin.min = min; sliderMin.max = max; sliderMax.min = min; sliderMax.max = max;
+      if (activeFilters.yearRange.min === null) { activeFilters.yearRange.min = min; activeFilters.yearRange.max = max; sliderMin.value = min; sliderMax.value = max; } else { sliderMin.value = activeFilters.yearRange.min; sliderMax.value = activeFilters.yearRange.max; }
       updateYearRange();
     }
-
     function updateYearRange() {
-      const minInput = document.getElementById('yearRangeMin');
-      const maxInput = document.getElementById('yearRangeMax');
-      let minVal = parseInt(minInput.value);
-      let maxVal = parseInt(maxInput.value);
-
-      if (minVal > maxVal) {
-        if (document.activeElement.id === 'yearRangeMin') { minInput.value = maxVal; minVal = maxVal; }
-        else { maxInput.value = minVal; maxVal = minVal; }
-      }
-
-      document.getElementById('yearMinLabel').textContent = minVal;
-      document.getElementById('yearMaxLabel').textContent = maxVal;
-
-      const range = dataMaxYear - dataMinYear || 1;
-      const leftPct = ((minVal - dataMinYear) / range) * 100;
-      const widthPct = ((maxVal - minVal) / range) * 100;
-
-      // Get control width for padding offset
-      const ctrl = document.getElementById('yearRangeControl');
-      const ctrlW = ctrl ? ctrl.offsetWidth : 200;
-      const padPx = 10;
-      const innerW = ctrlW - padPx * 2;
-
-      const fill = document.getElementById('yearRangeFill');
-      if (fill) {
-        fill.style.left = (padPx + (leftPct / 100) * innerW) + 'px';
-        fill.style.width = ((widthPct / 100) * innerW) + 'px';
-      }
-
-      // Position tooltip bubbles
-      const tMin = document.getElementById('yearTooltipMin');
-      const tMax = document.getElementById('yearTooltipMax');
-      if (tMin) {
-        tMin.textContent = minVal;
-        tMin.style.left = (padPx + (leftPct / 100) * innerW) + 'px';
-      }
-      if (tMax) {
-        tMax.textContent = maxVal;
-        tMax.style.left = (padPx + ((leftPct + widthPct) / 100) * innerW) + 'px';
-      }
-
-      activeFilters.yearRange.min = minVal;
-      activeFilters.yearRange.max = maxVal;
+      const minInput = document.getElementById('yearRangeMin'), maxInput = document.getElementById('yearRangeMax');
+      let minVal = parseInt(minInput.value), maxVal = parseInt(maxInput.value);
+      if (minVal > maxVal) { if (document.activeElement.id === 'yearRangeMin') { minInput.value = maxVal; minVal = maxVal; } else { maxInput.value = minVal; maxVal = minVal; } }
+      document.getElementById('yearMinLabel').textContent = minVal; document.getElementById('yearMaxLabel').textContent = maxVal;
+      const range = dataMaxYear - dataMinYear || 1; const leftPct = ((minVal - dataMinYear) / range) * 100, widthPct = ((maxVal - minVal) / range) * 100;
+      const ctrl = document.getElementById('yearRangeControl'); const ctrlW = ctrl ? ctrl.offsetWidth : 200; const padPx = 10, innerW = ctrlW - padPx * 2;
+      const fill = document.getElementById('yearRangeFill'); if (fill) { fill.style.left = (padPx + (leftPct / 100) * innerW) + 'px'; fill.style.width = ((widthPct / 100) * innerW) + 'px'; }
+      const tMin = document.getElementById('yearTooltipMin'), tMax = document.getElementById('yearTooltipMax');
+      if (tMin) { tMin.textContent = minVal; tMin.style.left = (padPx + (leftPct / 100) * innerW) + 'px'; }
+      if (tMax) { tMax.textContent = maxVal; tMax.style.left = (padPx + ((leftPct + widthPct) / 100) * innerW) + 'px'; }
+      activeFilters.yearRange.min = minVal; activeFilters.yearRange.max = maxVal;
     }
-
     function applyYearFilter() { applyAnalyticsFilters(); renderYearChart(); }
-
-    function resetYearFilter() {
-      activeFilters.yearRange.min = dataMinYear; activeFilters.yearRange.max = dataMaxYear;
-      document.getElementById('yearRangeMin').value = dataMinYear;
-      document.getElementById('yearRangeMax').value = dataMaxYear;
-      updateYearRange();
-      applyAnalyticsFilters();
-      renderYearChart();
-    }
-
+    function resetYearFilter() { activeFilters.yearRange.min = dataMinYear; activeFilters.yearRange.max = dataMaxYear; document.getElementById('yearRangeMin').value = dataMinYear; document.getElementById('yearRangeMax').value = dataMaxYear; updateYearRange(); applyAnalyticsFilters(); renderYearChart(); }
     function renderYearChart() {
-      const counts = {};
-      for (const r of getBaseData()) {
-        const y = r['Start Date'] ? new Date(r['Start Date']).getFullYear() : null;
-        if (y && y > 1980) counts[y] = (counts[y] || 0) + 1;
-      }
-      const labels = [];
-      for (let y = dataMinYear; y <= dataMaxYear; y++) labels.push(y.toString());
+      const isDark = document.body.classList.contains('dark-mode');
+      const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)';
+      const tickColor = isDark ? '#94a3b8' : '#64748b';
+      const inactiveBar = isDark ? 'rgba(20,184,166,0.15)' : 'rgba(20,184,166,0.2)';
 
+      const counts = {}; for (const r of getBaseData()) { const y = r['Start Date'] ? new Date(r['Start Date']).getFullYear() : null; if (y && y > 1980) counts[y] = (counts[y] || 0) + 1; }
+      const labels = []; for (let y = dataMinYear; y <= dataMaxYear; y++) labels.push(y.toString());
       const hasFilter = activeFilters.yearRange.min > dataMinYear || activeFilters.yearRange.max < dataMaxYear;
-      const bgColors = labels.map(l => {
-        const y = parseInt(l);
-        const isActive = y >= activeFilters.yearRange.min && y <= activeFilters.yearRange.max;
-        if (!hasFilter) return '#14b8a6'; // teal when no filter
-        return isActive ? '#14b8a6' : 'rgba(20,184,166,0.2)';
-      });
-
+      const bgColors = labels.map(l => { const y = parseInt(l); const isActive = y >= activeFilters.yearRange.min && y <= activeFilters.yearRange.max; if (!hasFilter) return '#14b8a6'; return isActive ? '#14b8a6' : inactiveBar; });
       if (yearChartInst) yearChartInst.destroy();
-      yearChartInst = new Chart(document.getElementById('yearChart'), {
-        type: 'bar',
-        data: {
-          labels,
-          datasets: [{
-            data: labels.map(l => counts[l] || 0),
-            backgroundColor: bgColors,
-            borderColor: 'transparent',
-            borderWidth: 0,
-            borderRadius: 3,
-          }]
-        },
-        options: {
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false },
-            tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y} trials` } }
-          },
-          scales: {
-            x: {
-              ticks: { color: '#94a3b8', font: { family: 'JetBrains Mono', size: 9 }, maxRotation: 45, minRotation: 45, maxTicksLimit: 10 },
-              grid: { display: false },
-              border: { display: false }
-            },
-            y: {
-              ticks: { color: '#94a3b8', font: { family: 'JetBrains Mono', size: 9 } },
-              grid: { color: 'rgba(0,0,0,0.04)' },
-              border: { display: false }
-            }
-          }
-        }
-      });
+      yearChartInst = new Chart(document.getElementById('yearChart'), { type: 'bar', data: { labels, datasets: [{ data: labels.map(l => counts[l] || 0), backgroundColor: bgColors, borderColor: 'transparent', borderWidth: 0, borderRadius: 3, }] }, options: { maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y} trials` } } }, scales: { x: { ticks: { color: tickColor, font: { family: 'JetBrains Mono', size: 9 }, maxRotation: 45, minRotation: 45, maxTicksLimit: 10 }, grid: { display: false }, border: { display: false } }, y: { ticks: { color: tickColor, font: { family: 'JetBrains Mono', size: 9 } }, grid: { color: gridColor }, border: { display: false } } } } });
     }
 
-    // ==================== WORLD MAP ====================
-    const CT_TO_ATLAS = {
-      'United States': 'United States of America', 'USA': 'United States of America', 'U.S.': 'United States of America',
-      'Korea, Republic of': 'South Korea', 'Korea': 'South Korea', 'Republic of Korea': 'South Korea',
-      "Korea, Democratic People's Republic of": 'North Korea', 'Russian Federation': 'Russia',
-      'Iran, Islamic Republic of': 'Iran', 'Syrian Arab Republic': 'Syria',
-      'Bolivia, Plurinational State of': 'Bolivia', 'Venezuela, Bolivarian Republic of': 'Venezuela',
-      'Tanzania, United Republic of': 'Tanzania', 'Congo, the Democratic Republic of the': 'Democratic Republic of the Congo',
-      'Congo': 'Republic of the Congo', 'Viet Nam': 'Vietnam', "Lao People's Democratic Republic": 'Laos',
-      'Myanmar': 'Myanmar', 'Brunei Darussalam': 'Brunei', 'Czech Republic': 'Czechia',
-      'United Kingdom': 'United Kingdom', 'United Arab Emirates': 'United Arab Emirates', 'Hong Kong': 'China',
-    };
-
+    const CT_TO_ATLAS = { 'United States': 'United States of America', 'USA': 'United States of America', 'U.S.': 'United States of America', 'Korea, Republic of': 'South Korea', 'Korea': 'South Korea', 'Republic of Korea': 'South Korea', "Korea, Democratic People's Republic of": 'North Korea', 'Russian Federation': 'Russia', 'Iran, Islamic Republic of': 'Iran', 'Syrian Arab Republic': 'Syria', 'Bolivia, Plurinational State of': 'Bolivia', 'Venezuela, Bolivarian Republic of': 'Venezuela', 'Tanzania, United Republic of': 'Tanzania', 'Congo, the Democratic Republic of the': 'Democratic Republic of the Congo', 'Congo': 'Republic of the Congo', 'Viet Nam': 'Vietnam', "Lao People's Democratic Republic": 'Laos', 'Myanmar': 'Myanmar', 'Brunei Darussalam': 'Brunei', 'Czech Republic': 'Czechia', 'United Kingdom': 'United Kingdom', 'United Arab Emirates': 'United Arab Emirates', 'Hong Kong': 'China', };
     function normalizeCTCountry(name) { return CT_TO_ATLAS[name] || name; }
-
-    function getCountryCounts() {
-      const counts = {};
-      for (const r of getBaseData()) for (const c of (r._countries || [])) if (c) { const norm = normalizeCTCountry(c); counts[norm] = (counts[norm] || 0) + 1; }
-      return counts;
-    }
+    function getCountryCounts() { const counts = {}; for (const r of getBaseData()) for (const c of (r._countries || [])) if (c) { const norm = normalizeCTCountry(c); counts[norm] = (counts[norm] || 0) + 1; } return counts; }
 
     async function renderWorldMap() {
-      const wrap = document.getElementById('worldMapWrap');
-      d3.select('#worldMapWrap svg').remove();
-      const counts = getCountryCounts();
-      const maxVal = Math.max(...Object.values(counts), 1);
+      const wrap = document.getElementById('worldMapWrap'); d3.select('#worldMapWrap svg').remove();
+      const counts = getCountryCounts(); const maxVal = Math.max(...Object.values(counts), 1);
       document.getElementById('mapLegendMax').textContent = maxVal;
+      const colorScale = d3.scaleSequential().domain([0, maxVal]).interpolator(d3.interpolateRgbBasis(['#e0f2fe', '#38bdf8', '#818cf8', '#c084fc', '#e11d48']));
 
-      // Vibrant custom heat scale for the map
-      const colorScale = d3.scaleSequential()
-        .domain([0, maxVal])
-        .interpolator(d3.interpolateRgbBasis(['#e0f2fe', '#38bdf8', '#818cf8', '#c084fc', '#e11d48']));
+      const isDark = document.body.classList.contains('dark-mode');
+      const selectedColor = '#fbbf24';
+      const noDataColor = isDark ? '#334155' : '#e8edf2';
+      const oceanColor = isDark ? '#1e293b' : '#f0f6ff';
+      const strokeColor = isDark ? '#475569' : '#fff';
+      const gridColor = isDark ? '#334155' : '#c7d8ea';
 
-      const selectedColor = '#fbbf24', noDataColor = '#e8edf2', oceanColor = '#f0f6ff';
-      const W = 960, H = 500;
-      const projection = d3.geoNaturalEarth1().scale(153).translate([W / 2, H / 2]);
-      const path = d3.geoPath(projection);
+      const W = 960, H = 500; const projection = d3.geoNaturalEarth1().scale(153).translate([W / 2, H / 2]); const path = d3.geoPath(projection);
       const svg = d3.select('#worldMapWrap').append('svg').attr('viewBox', `0 0 ${W} ${H}`).attr('preserveAspectRatio', 'xMidYMid meet').style('display', 'block').style('width', '100%').style('height', 'auto');
       svg.append('rect').attr('width', W).attr('height', H).attr('fill', oceanColor);
-      svg.append('path').datum({ type: 'Sphere' }).attr('d', path).attr('fill', oceanColor).attr('stroke', '#c7d8ea').attr('stroke-width', 0.5);
+      svg.append('path').datum({ type: 'Sphere' }).attr('d', path).attr('fill', oceanColor).attr('stroke', gridColor).attr('stroke-width', 0.5);
       const tooltip = document.getElementById('mapTooltip');
-      if (!worldTopoData) {
-        try { worldTopoData = await d3.json('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json'); }
-        catch (e) { wrap.innerHTML += '<div style="padding:20px;color:#64748b;font-size:13px;">Could not load world map topology.</div>'; return; }
-      }
-      const countries = topojson.feature(worldTopoData, worldTopoData.objects.countries);
-      const idToName = {};
-      countries.features.forEach(f => { if (f.properties?.name) idToName[f.id] = f.properties.name; });
-      svg.selectAll('path.country').data(countries.features).join('path').attr('class', 'country').attr('d', path).attr('stroke', '#fff').attr('stroke-width', 0.4)
-        .attr('fill', d => {
-          const name = idToName[d.id] || '';
-          const count = counts[name] || 0;
-          if (activeFilters.country.has(name) && count > 0) return selectedColor;
-          return count > 0 ? colorScale(count) : noDataColor;
-        })
-        .style('cursor', d => counts[idToName[d.id] || ''] ? 'pointer' : 'default')
-        .on('mousemove', function (event, d) { const name = idToName[d.id] || ''; const count = counts[name] || 0; if (!count) { tooltip.classList.remove('visible'); return; } const rect = wrap.getBoundingClientRect(); const x = event.clientX - rect.left + 10; const y = event.clientY - rect.top - 36; tooltip.style.left = Math.min(x, wrap.offsetWidth - 180) + 'px'; tooltip.style.top = Math.max(y, 4) + 'px'; tooltip.innerHTML = `<strong>${name}</strong>: ${count} trial${count !== 1 ? 's' : ''}`; tooltip.classList.add('visible'); })
-        .on('mouseleave', () => tooltip.classList.remove('visible'))
-        .on('click', function (event, d) { const name = idToName[d.id] || ''; if (!counts[name]) return; toggleFilter('country', name); });
-      svg.append('path').datum(d3.geoGraticule()()).attr('d', path).attr('fill', 'none').attr('stroke', '#c7d8ea').attr('stroke-width', 0.3).attr('opacity', 0.6);
+      if (!worldTopoData) { try { worldTopoData = await d3.json('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json'); } catch (e) { wrap.innerHTML += '<div style="padding:20px;color:#64748b;font-size:13px;">Could not load world map topology.</div>'; return; } }
+      const countries = topojson.feature(worldTopoData, worldTopoData.objects.countries); const idToName = {}; countries.features.forEach(f => { if (f.properties?.name) idToName[f.id] = f.properties.name; });
+      svg.selectAll('path.country').data(countries.features).join('path').attr('class', 'country').attr('d', path).attr('stroke', strokeColor).attr('stroke-width', 0.4).attr('fill', d => { const name = idToName[d.id] || ''; const count = counts[name] || 0; if (activeFilters.country.has(name) && count > 0) return selectedColor; return count > 0 ? colorScale(count) : noDataColor; }).style('cursor', d => counts[idToName[d.id] || ''] ? 'pointer' : 'default').on('mousemove', function (event, d) { const name = idToName[d.id] || ''; const count = counts[name] || 0; if (!count) { tooltip.classList.remove('visible'); return; } const rect = wrap.getBoundingClientRect(); const x = event.clientX - rect.left + 10; const y = event.clientY - rect.top - 36; tooltip.style.left = Math.min(x, wrap.offsetWidth - 180) + 'px'; tooltip.style.top = Math.max(y, 4) + 'px'; tooltip.innerHTML = `<strong>${name}</strong>: ${count} trial${count !== 1 ? 's' : ''}`; tooltip.classList.add('visible'); }).on('mouseleave', () => tooltip.classList.remove('visible')).on('click', function (event, d) { const name = idToName[d.id] || ''; if (!counts[name]) return; toggleFilter('country', name); });
+      svg.append('path').datum(d3.geoGraticule()()).attr('d', path).attr('fill', 'none').attr('stroke', gridColor).attr('stroke-width', 0.3).attr('opacity', 0.6);
       updateSelectedCountryList();
     }
+    function updateSelectedCountryList() { const el = document.getElementById('mapSelectedList'); if (!el) return; el.textContent = activeFilters.country.size ? 'Filtered: ' + [...activeFilters.country].join(', ') : ''; }
 
-    function updateSelectedCountryList() {
-      const el = document.getElementById('mapSelectedList'); if (!el) return;
-      el.textContent = activeFilters.country.size ? 'Filtered: ' + [...activeFilters.country].join(', ') : '';
-    }
-
-    // ==================== MULTI-SELECT FILTER ====================
-    function toggleFilter(type, value) {
-      const key = String(value);
-      if (activeFilters[type].has(key)) activeFilters[type].delete(key); else activeFilters[type].add(key);
-      renderStatusChart(); renderWorldMap(); applyAnalyticsFilters();
-    }
+    function toggleFilter(type, value) { const key = String(value); if (activeFilters[type].has(key)) activeFilters[type].delete(key); else activeFilters[type].add(key); renderStatusChart(); renderWorldMap(); applyAnalyticsFilters(); }
 
     function applyAnalyticsFilters() {
       const hasFilterStatus = activeFilters.status.size > 0;
       const hasFilterCountry = activeFilters.country.size > 0;
+      const hasFilterKeyword = activeFilters.keyword.size > 0;
       const hasFilterYear = activeFilters.yearRange.min !== null && (activeFilters.yearRange.min > dataMinYear || activeFilters.yearRange.max < dataMaxYear);
       const hasDropdownFilter = Object.values(activeFilters.dropdowns).some(v => v !== '');
-      const hasAny = hasFilterStatus || hasFilterCountry || hasFilterYear || hasDropdownFilter;
+      const hasAny = hasFilterStatus || hasFilterCountry || hasFilterKeyword || hasFilterYear || hasDropdownFilter || showWatchlistOnly;
 
       const base = getBaseData();
 
       filteredData = base.filter(r => {
+        if (showWatchlistOnly && !isInWatchlist(r.NCT)) return false;
+
         const searchQ = document.getElementById('tableSearch').value.toLowerCase();
         if (searchQ && !r.Title.toLowerCase().includes(searchQ) && !r.NCT.toLowerCase().includes(searchQ) && !(r.Keyword || '').toLowerCase().includes(searchQ) && !r.Conditions.toLowerCase().includes(searchQ)) return false;
         if (hasFilterStatus && !activeFilters.status.has(r.Status)) return false;
-
-        if (hasFilterYear) {
-          const y = r['Start Date'] ? new Date(r['Start Date']).getFullYear() : null;
-          if (!y || y < activeFilters.yearRange.min || y > activeFilters.yearRange.max) return false;
-        }
-
-        if (hasFilterCountry) {
-          const cs = (r._countries || []).map(normalizeCTCountry);
-          if (![...activeFilters.country].some(c => cs.includes(c))) return false;
-        }
+        if (hasFilterKeyword && !activeFilters.keyword.has(r.Keyword)) return false;
+        if (hasFilterYear) { const y = r['Start Date'] ? new Date(r['Start Date']).getFullYear() : null; if (!y || y < activeFilters.yearRange.min || y > activeFilters.yearRange.max) return false; }
+        if (hasFilterCountry) { const cs = (r._countries || []).map(normalizeCTCountry); if (![...activeFilters.country].some(c => cs.includes(c))) return false; }
 
         const dd = activeFilters.dropdowns;
         if (dd.studyType && r['Study Type'] !== dd.studyType) return false;
@@ -2773,112 +3954,243 @@
         if (dd.sex && r.Sex !== dd.sex) return false;
         if (dd.healthy && r['Healthy Volunteers'] !== dd.healthy) return false;
         if (dd.hasResults && r['Has Results'] !== dd.hasResults) return false;
+        if (dd.sponsor && r.Sponsor !== dd.sponsor) return false;
         return true;
       });
 
       currentPage = 1; openNCT = null;
-      renderTable(); renderChips(); updateFilterGlows();
+      renderTable(); renderChips(); updateFilterGlows(); renderSponsorList();
 
       const banner = document.getElementById('filterBanner');
       const btn = document.getElementById('clearAnalyticsBtn');
-      if (hasAny) {
-        document.getElementById('filterBannerText').textContent = `${filteredData.length} trial${filteredData.length !== 1 ? 's' : ''} match active filters`;
-        banner.classList.add('visible'); btn.style.display = '';
-      } else { banner.classList.remove('visible'); btn.style.display = 'none'; }
+      if (hasAny) { document.getElementById('filterBannerText').textContent = `${filteredData.length} trial${filteredData.length !== 1 ? 's' : ''} match active filters`; banner.classList.add('visible'); btn.style.display = ''; } else { banner.classList.remove('visible'); btn.style.display = 'none'; }
       updateSelectedCountryList();
     }
 
     function renderChips() {
-      const wrap = document.getElementById('activeChips'); const chips = [];
-      const chipColor = { status: '#2563eb', country: '#2563eb' };
-
-      for (const [type, set] of Object.entries(activeFilters)) {
-        if (type === 'yearRange' || type === 'dropdowns') continue;
-        for (const val of set) {
-          const c = chipColor[type];
-          chips.push(`<span class="chip" style="background:${c}15;color:${c};border-color:${c}40" onclick="toggleFilter('${type}','${val.replace(/'/g, "\\'")}')">
-        ${val} <span class="chip-x">×</span></span>`);
-        }
-      }
-
-      if (activeFilters.yearRange.min !== null && (activeFilters.yearRange.min > dataMinYear || activeFilters.yearRange.max < dataMaxYear)) {
-        chips.push(`<span class="chip" style="background:#0d948815;color:#0d9488;border-color:#0d948840" onclick="resetYearFilter()">
-      Years: ${activeFilters.yearRange.min} – ${activeFilters.yearRange.max} <span class="chip-x">×</span></span>`);
-      }
-
-      const dropLabels = { studyType: 'Type', phase: 'Phase', allocation: 'Allocation', masking: 'Masking', purpose: 'Purpose', intModel: 'Model', sex: 'Sex', healthy: 'Healthy Vol', hasResults: 'Results' };
-      for (const [key, val] of Object.entries(activeFilters.dropdowns)) {
-        if (val) {
-          chips.push(`<span class="chip" style="background:#f59e0b15;color:#b45309;border-color:#f59e0b40" onclick="clearDropdownFilter('${key}')">
-      ${dropLabels[key]}: ${val.replace(/'/g, "\\'")}<span class="chip-x">×</span></span>`);
-        }
-      }
-
+      const wrap = document.getElementById('activeChips'); const chips = []; const chipColor = { status: '#2563eb', country: '#2563eb' };
+      for (const [type, set] of Object.entries(activeFilters)) { if (type === 'yearRange' || type === 'dropdowns' || type === 'keyword') continue; for (const val of set) { const c = chipColor[type]; chips.push(`<span class="chip" style="background:${c}15;color:${c};border-color:${c}40" onclick="toggleFilter('${type}','${val.replace(/'/g, "\\'")}')">${val} <span class="chip-x">×</span></span>`); } }
+      for (const kw of activeFilters.keyword) { chips.push(`<span class="chip" style="background:#f59e0b15;color:#92400e;border-color:#f59e0b40" onclick="toggleKeywordFilter('${kw.replace(/'/g, "\\'")}')">🔑 ${kw} <span class="chip-x">×</span></span>`); }
+      if (activeFilters.yearRange.min !== null && (activeFilters.yearRange.min > dataMinYear || activeFilters.yearRange.max < dataMaxYear)) { chips.push(`<span class="chip" style="background:#0d948815;color:#0d9488;border-color:#0d948840" onclick="resetYearFilter()">Years: ${activeFilters.yearRange.min} – ${activeFilters.yearRange.max} <span class="chip-x">×</span></span>`); }
+      const dropLabels = { studyType: 'Type', phase: 'Phase', allocation: 'Allocation', masking: 'Masking', purpose: 'Purpose', intModel: 'Model', sex: 'Sex', healthy: 'Healthy Vol', hasResults: 'Results', sponsor: 'Sponsor' };
+      for (const [key, val] of Object.entries(activeFilters.dropdowns)) { if (val) { chips.push(`<span class="chip" style="background:#f59e0b15;color:#b45309;border-color:#f59e0b40" onclick="clearDropdownFilter('${key}')">${dropLabels[key]}: ${val.replace(/'/g, "\\'")}<span class="chip-x">×</span></span>`); } }
+      if (showWatchlistOnly) { chips.push(`<span class="chip" style="background:#f59e0b15;color:#d97706;border-color:#fcd34d" onclick="toggleWatchlistFilter()">★ Saved Trials <span class="chip-x">×</span></span>`); }
       if (chips.length) { wrap.style.display = 'flex'; wrap.innerHTML = chips.join(''); } else { wrap.style.display = 'none'; wrap.innerHTML = ''; }
     }
 
     function clearAllFilters() {
-      activeFilters.status.clear(); activeFilters.country.clear();
-      activeFilters.dropdowns = { studyType: '', phase: '', allocation: '', masking: '', purpose: '', intModel: '', sex: '', healthy: '', hasResults: '' };
-
+      activeFilters.status.clear(); activeFilters.country.clear(); activeFilters.keyword.clear(); showWatchlistOnly = false;
+      const wlBtn = document.getElementById('watchlistToggleBtn');
+      if (wlBtn) { wlBtn.innerHTML = `<span class="wl-icon">☆</span> Show Saved`; wlBtn.classList.remove('active-filter'); }
+      activeFilters.dropdowns = { studyType: '', phase: '', allocation: '', masking: '', purpose: '', intModel: '', sex: '', healthy: '', hasResults: '', sponsor: '' };
       document.getElementById('tableSearch').value = '';
-
-      ['selStudyType', 'selPhase', 'selAllocation', 'selMasking', 'selPurpose', 'selIntModel', 'selSex', 'selHealthy', 'selHasResults']
-        .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-
-      activeOverview = 'unique'; updateOverviewStyles();
-      filteredData = [...uniqueData]; currentPage = 1; openNCT = null;
-      resetYearFilter(); renderStatusChart(); renderWorldMap(); renderTable(); renderChips(); updateFilterGlows();
-      document.getElementById('filterBanner').classList.remove('visible');
-      document.getElementById('clearAnalyticsBtn').style.display = 'none';
+      ['selStudyType', 'selPhase', 'selAllocation', 'selMasking', 'selPurpose', 'selIntModel', 'selSex', 'selHealthy', 'selHasResults'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+      activeOverview = 'unique'; updateOverviewStyles(); filteredData = [...uniqueData]; currentPage = 1; openNCT = null; resetYearFilter(); renderStatusChart(); renderWorldMap(); renderTable(); renderChips(); updateFilterGlows(); renderKeywordList(); renderSponsorList();
+      document.getElementById('filterBanner').classList.remove('visible'); document.getElementById('clearAnalyticsBtn').style.display = 'none';
     }
 
-    // ==================== KEYWORD TABLE ====================
-    function renderKeywordTable() {
+    function renderKeywordList() {
+      const el = document.getElementById('kwList');
+      if (!el) return;
       const counts = {};
-      for (const r of allData) { if (!counts[r.Keyword]) counts[r.Keyword] = new Set(); counts[r.Keyword].add(r.NCT); }
+      for (const r of allData) {
+        if (!counts[r.Keyword]) counts[r.Keyword] = new Set();
+        counts[r.Keyword].add(r.NCT);
+      }
+      const sorted = Object.entries(counts).sort((a, b) => b[1].size - a[1].size);
+      if (!sorted.length) { el.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:12px;">No keyword data</div>'; return; }
+
       let html = '';
-      for (const [kw, set] of Object.entries(counts))
-        html += `<tr onclick="quickFilterKeyword('${kw.replace(/'/g, "\\'")}')"><td>${kw}</td><td>${set.size}</td></tr>`;
-      document.getElementById('kwTable').innerHTML = html || '<tr><td colspan="2" style="color:var(--muted)">No data</td></tr>';
+      sorted.forEach(([kw, set], i) => {
+        const isActive = activeFilters.keyword.has(kw);
+        const safeKw = kw.replace(/'/g, "\\'");
+        const count = set.size;
+
+        html += `<div class="list-row${isActive ? ' sp-active' : ''}" onclick="toggleKeywordFilter('${safeKw}')" title="${kw.replace(/"/g, '&quot;')}">
+          <span class="list-rank">${i + 1}</span>
+          <span class="list-name">${kw}</span>
+          <span class="list-count" style="color: var(--gold);">${count}</span>
+        </div>`;
+      });
+      el.innerHTML = html;
     }
 
-    function quickFilterKeyword(kw) {
-      document.getElementById('tableSearch').value = kw;
+    function toggleKeywordFilter(kw) { if (activeFilters.keyword.has(kw)) { activeFilters.keyword.delete(kw); } else { activeFilters.keyword.add(kw); } renderKeywordList(); applyAnalyticsFilters(); }
+
+    function renderSponsorList() {
+      const el = document.getElementById('sponsorList');
+      if (!el) return;
+      const base = getBaseData();
+      const counts = {};
+      for (const r of base) {
+        if (r.Sponsor) counts[r.Sponsor] = (counts[r.Sponsor] || 0) + 1;
+      }
+      const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+      if (!sorted.length) { el.innerHTML = `<div style="color:var(--muted);font-size:12px;padding:12px;">No sponsor data</div>`; return; }
+
+      const activeSponsor = activeFilters.dropdowns.sponsor;
+      let html = '';
+      sorted.forEach(([name, count], i) => {
+        const isActive = activeSponsor === name;
+        const safeName = name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+
+        html += `<div class="list-row${isActive ? ' sp-active' : ''}" onclick="toggleSponsorFilter('${safeName}')" title="${name.replace(/"/g, '&quot;')}">
+          <span class="list-rank">${i + 1}</span>
+          <span class="list-name">${name}</span>
+          <span class="list-count" style="color: var(--accent2);">${count}</span>
+        </div>`;
+      });
+      el.innerHTML = html;
+    }
+
+    function toggleSponsorFilter(name) {
+      if (activeFilters.dropdowns.sponsor === name) {
+        activeFilters.dropdowns.sponsor = '';
+      } else {
+        activeFilters.dropdowns.sponsor = name;
+      }
+      renderSponsorList();
       applyAnalyticsFilters();
-      document.getElementById('filterBanner').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // ==================== KEYBOARD SHORTCUTS ====================
+    let kbOverlayOpen = false;
+    function toggleKbOverlay() { kbOverlayOpen = !kbOverlayOpen; document.getElementById('kbOverlay').classList.toggle('visible', kbOverlayOpen); }
+    function closeKbOverlay(e) { if (e.target === document.getElementById('kbOverlay')) toggleKbOverlay(); }
+    function getVisibleRows() { return filteredData.slice((currentPage - 1) * pageSize, currentPage * pageSize); }
+    function moveFocus(dir) {
+      const rows = getVisibleRows(); if (!rows.length) return;
+      const idx = rows.findIndex(r => r.NCT === focusedNCT);
+      let next; if (idx === -1) next = dir > 0 ? 0 : rows.length - 1; else next = Math.max(0, Math.min(rows.length - 1, idx + dir));
+      focusedNCT = rows[next].NCT; renderTable();
+      const tr = document.querySelector(`tr[data-nct="${focusedNCT}"]`);
+      if (tr) tr.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+    function copyAMACitation(nct) {
+      const r = filteredData.find(d => d.NCT === nct) || allData.find(d => d.NCT === nct); if (!r) return;
+      const author = r.PI ? r.PI.split(',')[0].trim() : (r.Sponsor || 'Unknown');
+      const year = r['Start Date'] ? new Date(r['Start Date']).getFullYear() : 'n.d.';
+      const accessed = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+      const citation = `${author}. ${r.OfficialTitle || r.Title}. ClinicalTrials.gov identifier: ${r.NCT}. Updated ${year}. Accessed ${accessed}. ${r.URL}`;
+      navigator.clipboard.writeText(citation).then(() => showToast('📋 Citation copied!')).catch(() => showToast('Copy failed — check clipboard permissions'));
+    }
+
+    document.addEventListener('keydown', function (e) {
+      const tag = document.activeElement ? document.activeElement.tagName : '';
+      if (['INPUT', 'SELECT', 'TEXTAREA'].includes(tag)) return;
+      if (kbOverlayOpen) { if (e.key === 'Escape' || e.key === '?') { e.preventDefault(); toggleKbOverlay(); } return; }
+      switch (e.key) {
+        case '?': e.preventDefault(); toggleKbOverlay(); break;
+        case '/': e.preventDefault(); const srch = document.getElementById('tableSearch'); if (srch) { srch.focus(); srch.select(); } break;
+        case 'ArrowDown': e.preventDefault(); moveFocus(1); break;
+        case 'ArrowUp': e.preventDefault(); moveFocus(-1); break;
+        case 'ArrowRight': e.preventDefault(); goPage(currentPage + 1); break;
+        case 'ArrowLeft': e.preventDefault(); goPage(currentPage - 1); break;
+        case 'Enter': if (focusedNCT) { e.preventDefault(); expandRow(focusedNCT); } break;
+        case 'Escape': e.preventDefault(); openNCT = null; focusedNCT = null; renderTable(); break;
+        case 's': case 'S': if (focusedNCT) { e.preventDefault(); toggleWatchlist(focusedNCT); } break;
+        case 'c': case 'C': if (focusedNCT) { e.preventDefault(); copyAMACitation(focusedNCT); } break;
+      }
+    });
+
+    // ==================== GANTT CHART ====================
+    function buildGanttChart(r) {
+      const parseDate = s => s ? new Date(s) : null;
+      const fmt = d => d ? d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '—';
+      const start = parseDate(r['Start Date']);
+      const primEnd = parseDate(r['Primary Completion']);
+      const studEnd = parseDate(r['Study Completion']);
+      if (!start) return `<div style="color:var(--muted);font-size:13px;padding:20px 0;">No start date available for this trial.</div>`;
+      const earliest = start;
+      const latest = studEnd || primEnd || start;
+      let totalMs = Math.max(latest - earliest, 1);
+      const padMs = totalMs * 0.05;
+      const viewStart = new Date(earliest.getTime() - padMs);
+      const viewEnd = new Date(latest.getTime() + padMs);
+      const viewTotalMs = viewEnd - viewStart;
+      const pct = (d1, d2) => { if (!d1 || !d2) return 0; return Math.min(100, Math.max(0, ((d2 - d1) / viewTotalMs) * 100)); };
+      const left = d => Math.min(100, Math.max(0, ((d - viewStart) / viewTotalMs) * 100));
+      const now = new Date();
+      const nowLeft = left(now);
+      const statusColor = (() => {
+        const s = (r.Status || '').toUpperCase();
+        if (s.includes('RECRUITING')) return '#2563eb';
+        if (s.includes('COMPLETED')) return '#059669';
+        if (s.includes('ACTIVE')) return '#d97706';
+        if (s.includes('TERMINATED') || s.includes('WITHDRAWN')) return '#e11d48';
+        return '#64748b';
+      })();
+      const seg1W = primEnd ? pct(start, primEnd) : pct(start, studEnd || start);
+      const seg1Left = left(start);
+      const seg2Left = primEnd ? left(primEnd) : null;
+      const seg2W = (primEnd && studEnd) ? pct(primEnd, studEnd) : null;
+      const milestones = [];
+      if (start) milestones.push({ d: start, label: 'Start', color: '#3b82f6' });
+      if (primEnd) milestones.push({ d: primEnd, label: 'Primary', color: '#f59e0b' });
+      if (studEnd && studEnd.getTime() !== primEnd?.getTime()) milestones.push({ d: studEnd, label: 'Complete', color: '#10b981' });
+      const nowInRange = now >= viewStart && now <= viewEnd;
+      const yrs = [];
+      for (let y = viewStart.getFullYear(); y <= viewEnd.getFullYear(); y++) yrs.push(y);
+      const yearStep = Math.ceil(yrs.length / 10);
+      const yearMarks = yrs.filter((_, i) => i % yearStep === 0).map(y => {
+        const d = new Date(y, 0, 1);
+        const l = left(d);
+        if (l < 0 || l > 100) return '';
+        return `<div style="position:absolute;left:${l}%;top:0;height:100%;border-left:1px dashed var(--border);pointer-events:none;opacity:0.5;"></div>
+                <div style="position:absolute;left:${l}%;top:100%;transform:translateX(-50%);font-size:10px;color:var(--muted);margin-top:6px;white-space:nowrap;font-family:'JetBrains Mono', monospace;">${y}</div>`;
+      }).join('');
+      const seg1 = `<div style="position:absolute;left:${seg1Left}%;width:${seg1W}%;height:100%;background:linear-gradient(90deg, ${statusColor}dd, ${statusColor});border-radius:${seg2W ? '8px 0 0 8px' : '8px'};box-shadow:0 4px 12px ${statusColor}30; border: 1px solid ${statusColor};"></div>`;
+      const seg2 = (seg2Left !== null && seg2W !== null) ? `<div style="position:absolute;left:${seg2Left}%;width:${seg2W}%;height:100%;background:repeating-linear-gradient(45deg, ${statusColor}20, ${statusColor}20 8px, ${statusColor}10 8px, ${statusColor}10 16px);border-radius:0 8px 8px 0; border: 1px dashed ${statusColor}; border-left: none;"></div>` : '';
+      const nowLine = nowInRange ? `<div style="position:absolute;left:${nowLeft}%;top:-15px;bottom:-15px;width:2px;background:var(--accent3);border-radius:2px;z-index:2;box-shadow:0 0 8px var(--accent3);" title="Today"><div style="position:absolute;top:-14px;left:50%;transform:translateX(-50%);background:var(--accent3);color:#fff;padding:2px 6px;border-radius:4px;font-size:8px;font-weight:700;white-space:nowrap;letter-spacing:0.05em;">TODAY</div></div>` : '';
+      const milestoneHtml = milestones.map((m, i) => {
+        const isTop = i % 2 !== 0; const topPos = isTop ? '-42px' : '24px'; const lineH = '16px'; const lineTop = isTop ? '-16px' : '14px';
+        return `<div style="position:absolute;left:${left(m.d)}%;top:-3px;transform:translateX(-50%);z-index:10;display:flex;flex-direction:column;align-items:center;">
+           <div style="width:16px;height:16px;background:var(--surface2);border-radius:50%;border:4px solid ${m.color};box-shadow:0 2px 6px rgba(0,0,0,0.15);"></div>
+           <div style="position:absolute;top:${lineTop};width:2px;height:${lineH};background:${m.color}60;z-index:-1;"></div>
+           <div style="position:absolute;top:${topPos};background:var(--surface);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);padding:6px 10px;border-radius:8px;border:1px solid var(--border);box-shadow:0 8px 20px rgba(0,0,0,0.08);font-size:11px;color:var(--text);white-space:nowrap;font-weight:600;text-align:center;line-height:1.3; transition:transform 0.2s; cursor:default;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+              <span style="color:${m.color}">${m.label}</span><br><span style="font-weight:500;color:var(--muted);font-size:10px;">${fmt(m.d)}</span>
+           </div>
+         </div>`
+      }).join('');
+      return `<div class="gantt-wrap" style="padding: 30px 40px;">
+        <div style="margin-bottom:30px; display:flex; align-items:center; gap: 12px;">
+          <div style="width:40px;height:40px;border-radius:10px;background:${statusColor}15;display:grid;place-items:center;color:${statusColor};"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></div>
+          <div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:2px;">Trial Timeline</div><div style="font-size:14px;font-weight:600;color:var(--text);">${fmt(earliest)} &nbsp;→&nbsp; ${fmt(latest)}</div></div>
+        </div>
+        <div style="position:relative;padding:45px 0 60px;margin:0 10px;">
+          ${yearMarks}
+          <div style="position:relative;height:10px;background:var(--border);border-radius:5px;overflow:visible;">${seg1}${seg2}${nowLine}</div>
+          ${milestoneHtml}
+        </div>
+        <div class="gantt-legend" style="margin-top:20px; background:var(--surface); padding:12px 16px; border-radius:10px; display:inline-flex; border:1px solid var(--border);">
+          <div class="gantt-legend-item"><div class="gantt-legend-dot" style="background:linear-gradient(90deg, ${statusColor}dd, ${statusColor});box-shadow:0 2px 6px ${statusColor}40;"></div> Primary Active Period</div>
+          ${seg2W ? `<div class="gantt-legend-item"><div class="gantt-legend-dot" style="background:repeating-linear-gradient(45deg, ${statusColor}40, ${statusColor}40 4px, ${statusColor}20 4px, ${statusColor}20 8px);"></div> Extension Phase</div>` : ''}
+          ${nowInRange ? `<div class="gantt-legend-item"><div class="gantt-legend-dot" style="background:var(--accent3);"></div> Current Date</div>` : ''}
+        </div>
+      </div>`;
     }
 
     // ==================== TABLE GENERATION ====================
     function filterTable() { applyAnalyticsFilters(); }
-
-    function sortTable(key) {
-      if (sortKey === key) sortAsc = !sortAsc; else { sortKey = key; sortAsc = true; }
-      filteredData.sort((a, b) => { const va = (a[key] || '').toString().toLowerCase(); const vb = (b[key] || '').toString().toLowerCase(); return sortAsc ? va.localeCompare(vb) : vb.localeCompare(va); });
-      renderTable();
-    }
+    function sortTable(key) { if (sortKey === key) sortAsc = !sortAsc; else { sortKey = key; sortAsc = true; } filteredData.sort((a, b) => { const va = (a[key] || '').toString().toLowerCase(); const vb = (b[key] || '').toString().toLowerCase(); return sortAsc ? va.localeCompare(vb) : vb.localeCompare(va); }); renderTable(); }
 
     function renderTable() {
-      const total = filteredData.length;
-      const pages = Math.ceil(total / pageSize);
-      const start = (currentPage - 1) * pageSize;
-      const slice = filteredData.slice(start, start + pageSize);
-      updateSelectionUI();
-
+      const total = filteredData.length; const pages = Math.ceil(total / pageSize); const start = (currentPage - 1) * pageSize; const slice = filteredData.slice(start, start + pageSize); updateSelectionUI();
       let html = '';
       for (let i = 0; i < slice.length; i++) {
-        const r = slice[i];
-        const isOpen = openNCT === r.NCT;
-        const isChecked = selectedNCTs.has(r.NCT);
-        const rowNum = start + i + 1;
-
+        const r = slice[i]; const isOpen = openNCT === r.NCT; const isChecked = selectedNCTs.has(r.NCT); const rowNum = start + i + 1;
+        const inWl = isInWatchlist(r.NCT); const isFocused = focusedNCT === r.NCT;
         html += `
-        <tr class="trial-row${isOpen ? ' selected' : ''}" onclick="expandRow('${r.NCT}')">
-          <td><button class="expand-btn${isOpen ? ' open' : ''}" onclick="event.stopPropagation();expandRow('${r.NCT}')">${isOpen ? '▲' : '▼'}</button></td>
+        <tr class="trial-row${isOpen ? ' selected' : ''}${isFocused ? ' kb-focused' : ''}" data-nct="${r.NCT}" onclick="focusedNCT='${r.NCT}'; expandRow('${r.NCT}')">
+          <td><button class="expand-btn${isOpen ? ' open' : ''}" onclick="event.stopPropagation();focusedNCT='${r.NCT}';expandRow('${r.NCT}')">${isOpen ? '▲' : '▼'}</button></td>
           <td class="row-index">${rowNum}</td>
           <td onclick="event.stopPropagation()">
             <input type="checkbox" class="row-checkbox" value="${r.NCT}" ${isChecked ? 'checked' : ''} 
                    onchange="toggleSelection('${r.NCT}', this.checked)" style="cursor:pointer; width:15px; height:15px; accent-color:var(--accent);">
+          </td>
+          <td style="text-align:center; cursor:pointer; font-size:16px; color:${inWl ? '#f59e0b' : 'var(--muted)'};" 
+              onclick="event.stopPropagation(); toggleWatchlist('${r.NCT}')" title="Save Trial">
+            ${inWl ? '★' : '☆'}
           </td>
           <td><a class="nct-link" href="${r.URL}" target="_blank" onclick="event.stopPropagation()">${r.NCT}</a></td>
           <td class="col-wrap-text" title="${r.Title.replace(/"/g, '&quot;')}">${r.Title}</td>
@@ -2886,13 +4198,9 @@
           <td>${r['Start Date'] ? new Date(r['Start Date']).getFullYear() || '—' : '—'}</td>
           <td class="col-wrap-text">${r.Keyword}</td>
         </tr>`;
-
-        if (isOpen) {
-          html += buildDetailRow(r);
-        }
+        if (isOpen) { html += buildDetailRow(r); }
       }
-
-      document.getElementById('tableBody').innerHTML = html || `<tr><td colspan="8" class="empty" style="text-align:center;padding:40px;color:var(--muted)">No matching trials</td></tr>`;
+      document.getElementById('tableBody').innerHTML = html || `<tr><td colspan="9" class="empty" style="text-align:center;padding:40px;color:var(--muted)">No matching trials</td></tr>`;
       renderPagination(pages, total);
     }
 
@@ -2902,16 +4210,14 @@
       const para = (label, val) => val ? `<div class="dr-section"><div class="dr-section-title">${label}</div><div class="dr-para" style="text-align:justify;line-height:1.6;word-break:break-word;overflow-wrap:break-word;max-width:100%;white-space:normal;">${esc(val).split(/\r?\n/).filter(p => p.trim() !== '').map(p => `<p style="margin-bottom:12px;margin-top:0;">${p}</p>`).join('')}</div></div>` : '';
       const list = (label, val) => val ? `<div class="dr-section"><div class="dr-section-title">${label}</div><ul class="dr-list">${val.split(' | ').map(i => `<li>${esc(i)}</li>`).join('')}</ul></div>` : '';
 
-      const contacts = [...(r._centralContacts || [])];
-      let contactsHtml = '';
+      const contacts = [...(r._centralContacts || [])]; let contactsHtml = '';
       if (contacts.length) {
         let contactCards = contacts.map(c => {
           let cHtml = '<div class="contact-card">';
           if (c.name) cHtml += `<div class="contact-name">👤 ${esc(c.name)}</div>`;
           if (c.phone) cHtml += `<div class="contact-detail">📞 <a href="tel:${esc(c.phone)}" style="color:var(--accent);text-decoration:none;">${esc(c.phone)}</a></div>`;
           if (c.email) cHtml += `<div class="contact-detail">✉️ <a href="mailto:${esc(c.email)}" style="color:var(--accent);text-decoration:none;">${esc(c.email)}</a></div>`;
-          cHtml += '</div>';
-          return cHtml;
+          cHtml += '</div>'; return cHtml;
         }).join('');
         contactsHtml = `<div class="dr-section"><div class="dr-section-title">Study Contact</div><div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:12px;">${contactCards}</div></div>`;
       }
@@ -2922,7 +4228,6 @@
         locsHtml = `<div class="dr-section"><div class="dr-section-title">Locations<span style="text-transform:none;color:var(--muted);font-weight:normal;font-size:11px;letter-spacing:0;margin-left:8px;">— This study has ${r._locArray.length} location${r._locArray.length > 1 ? 's' : ''}</span></div><ul class="dr-list" style="margin-top:12px;">${locList}</ul></div>`;
       }
 
-      // Check toggles from View Customizer
       const show = (id) => viewSettings.details.find(d => d.id === id).visible;
 
       let inner = `
@@ -2936,7 +4241,9 @@
                   ${r.Phase ? `<span class="badge badge-active">${esc(r.Phase)}</span>` : ''}
                 </div>
               </div>
-              <a href="${r.URL}" target="_blank" class="btn btn-outline" style="font-size:11px;padding:6px 12px;text-decoration:none;">View on ClinicalTrials.gov ↗</a>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                <a href="${r.URL}" target="_blank" class="btn btn-outline" style="font-size:11px;padding:6px 12px;text-decoration:none;">View on ClinicalTrials.gov ↗</a>
+              </div>
             </div>
             ${r.Title ? `<div style="margin-bottom:10px;"><div class="dr-label-tag">Brief Title</div><div class="dr-title-brief">${esc(r.Title)}</div></div>` : ''}
             ${r.OfficialTitle && r.OfficialTitle !== r.Title ? `<div><div class="dr-label-tag">Official Title</div><div class="dr-title-big">${esc(r.OfficialTitle)}</div></div>` : `<div><div class="dr-label-tag">Official Title</div><div class="dr-title-big">${esc(r.Title)}</div></div>`}
@@ -2968,85 +4275,91 @@
         inner += `<div class="dr-section"><div class="dr-section-title">Conditions</div><div style="display:flex;flex-wrap:wrap;gap:8px">${tags}</div></div>`;
       }
 
-      if (show('summaries')) {
-        inner += para('Brief Summary', r.Summary);
-        inner += para('Detailed Description', r.DetailedDescription);
-      }
-
-      if (show('arms')) {
-        inner += list('Interventions', r.Interventions);
-        inner += list('Study Arms', r.Arms);
-      }
-
-      if (show('outcomes')) {
-        inner += list('Primary Outcomes', r['Primary Outcomes']);
-        if (r['Secondary Outcomes']) inner += list('Secondary Outcomes', r['Secondary Outcomes']);
-      }
+      if (show('summaries')) { inner += para('Brief Summary', r.Summary); inner += para('Detailed Description', r.DetailedDescription); }
+      if (show('arms')) { inner += list('Interventions', r.Interventions); inner += list('Study Arms', r.Arms); }
+      if (show('outcomes')) { inner += list('Primary Outcomes', r['Primary Outcomes']); if (r['Secondary Outcomes']) inner += list('Secondary Outcomes', r['Secondary Outcomes']); }
 
       if (show('eligibility')) {
         const ageRange = [r['Min Age'], r['Max Age']].filter(Boolean).join(' – ');
+        const sexDisplay = formatSexWithSymbol(r.Sex);
+
+        let incText = '';
+        let excText = '';
+        const crit = r.EligibilityCriteria || '';
+
+        if (crit.includes('Exclusion Criteria:')) {
+          const parts = crit.split('Exclusion Criteria:');
+          incText = parts[0].replace('Inclusion Criteria:', '').trim();
+          excText = parts[1].trim();
+        } else {
+          incText = crit;
+        }
+
         inner += `
         <div class="dr-section"><div class="dr-section-title">Eligibility</div>
           <div class="dr-grid-4" style="margin-bottom:12px">
             ${field('Age Range', ageRange)}
-            ${field('Sex', r.Sex)}
+            ${field('Sex', sexDisplay)}
             ${field('Healthy Volunteers', r['Healthy Volunteers'])}
           </div>
-          ${r.EligibilityCriteria ? `<div class="dr-para">${esc(r.EligibilityCriteria).replace(/\n/g, '<br>')}</div>` : ''}
+          
+          <div class="criteria-grid">
+            <div class="criteria-box box-inclusion">
+              <h4>Inclusion Criteria</h4>
+              <div>${esc(incText).replace(/\n/g, '<br>')}</div>
+            </div>
+            <div class="criteria-box box-exclusion">
+              <h4>Exclusion Criteria</h4>
+              <div>${esc(excText).replace(/\n/g, '<br>')}</div>
+            </div>
+          </div>
         </div>`;
       }
 
-      if (show('contacts')) {
-        inner += contactsHtml;
-        inner += locsHtml;
-      }
-
+      if (show('contacts')) { inner += contactsHtml; inner += locsHtml; }
       if (show('publications') && r._publicationsData && r._publicationsData.length) {
-        const pubHtml = r._publicationsData.map(pub => {
-          const txt = esc(pub.citation || `PMID: ${pub.pmid}`);
-          if (pub.pmid) {
-            return `<li><a href="https://pubmed.ncbi.nlm.nih.gov/${pub.pmid}/" target="_blank" style="color:var(--accent); text-decoration:none;">${txt} ↗</a></li>`;
-          }
-          return `<li>${txt}</li>`;
-        }).join('');
+        const pubHtml = r._publicationsData.map(pub => { const txt = esc(pub.citation || `PMID: ${pub.pmid}`); if (pub.pmid) { return `<li><a href="https://pubmed.ncbi.nlm.nih.gov/${pub.pmid}/" target="_blank" style="color:var(--accent); text-decoration:none;">${txt} ↗</a></li>`; } return `<li>${txt}</li>`; }).join('');
         inner += `<div class="dr-section"><div class="dr-section-title">Publications & References</div><ul class="dr-list">${pubHtml}</ul></div>`;
       }
 
-      return `<tr class="detail-row"><td colspan="8"><div class="detail-row-inner">${inner}</div></td></tr>`;
+      const nctSafe = r.NCT.replace(/'/g, "\\'");
+      const ganttHtml = buildGanttChart(r);
+
+      return `<tr class="detail-row"><td colspan="9"><div class="detail-row-inner">
+        <div class="gantt-tab-bar">
+          <button class="gantt-tab active" id="tab-details-${r.NCT}" onclick="switchTab('${nctSafe}','details')">📋 Details</button>
+          <button class="gantt-tab" id="tab-timeline-${r.NCT}" onclick="switchTab('${nctSafe}','timeline')">📊 Timeline</button>
+        </div>
+        <div id="tabpanel-details-${r.NCT}">${inner}</div>
+        <div id="tabpanel-timeline-${r.NCT}" style="display:none;">${ganttHtml}</div>
+      </div></td></tr>`;
+    }
+
+    function switchTab(nct, tab) {
+      ['details', 'timeline'].forEach(t => {
+        const panel = document.getElementById(`tabpanel-${t}-${nct}`);
+        const btn = document.getElementById(`tab-${t}-${nct}`);
+        if (panel) panel.style.display = t === tab ? '' : 'none';
+        if (btn) btn.classList.toggle('active', t === tab);
+      });
     }
 
     function expandRow(nct) { openNCT = openNCT === nct ? null : nct; renderTable(); }
 
     function renderPagination(pages, total) {
-      const p = document.getElementById('pagination');
-      if (pages <= 1) { p.innerHTML = ''; return; }
-
-      // Summary
-      const start = (currentPage - 1) * pageSize + 1;
-      const end = Math.min(currentPage * pageSize, total);
+      const p = document.getElementById('pagination'); if (pages <= 1) { p.innerHTML = ''; return; }
+      const start = (currentPage - 1) * pageSize + 1; const end = Math.min(currentPage * pageSize, total);
       let html = `<span class="page-info" style="font-size:12px;margin-right:8px;">${start}–${end} of ${total}</span>`;
-
       html += `<button class="page-btn" onclick="goPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>‹</button>`;
       const range = [];
-      for (let i = 1; i <= pages; i++) {
-        if (i === 1 || i === pages || Math.abs(i - currentPage) <= 2) range.push(i);
-        else if (range[range.length - 1] !== '…') range.push('…');
-      }
-      range.forEach(v => {
-        if (v === '…') html += `<span class="page-info">…</span>`;
-        else html += `<button class="page-btn ${v === currentPage ? 'active' : ''}" onclick="goPage(${v})">${v}</button>`;
-      });
+      for (let i = 1; i <= pages; i++) { if (i === 1 || i === pages || Math.abs(i - currentPage) <= 2) range.push(i); else if (range[range.length - 1] !== '…') range.push('…'); }
+      range.forEach(v => { if (v === '…') html += `<span class="page-info">…</span>`; else html += `<button class="page-btn ${v === currentPage ? 'active' : ''}" onclick="goPage(${v})">${v}</button>`; });
       html += `<button class="page-btn" onclick="goPage(${currentPage + 1})" ${currentPage === pages ? 'disabled' : ''}>›</button>`;
       p.innerHTML = html;
     }
 
-    function goPage(p) {
-      const pages = Math.ceil(filteredData.length / pageSize);
-      if (p < 1 || p > pages) return;
-      currentPage = p; openNCT = null; renderTable();
-    }
+    function goPage(p) { const pages = Math.ceil(filteredData.length / pageSize); if (p < 1 || p > pages) return; currentPage = p; openNCT = null; renderTable(); }
 
-    // ==================== BADGES ====================
     function badgeBadge(status) {
       const s = (status || '').toUpperCase();
       if (s.includes('RECRUITING')) return `<span class="badge badge-recruiting">${status}</span>`;
@@ -3056,11 +4369,8 @@
       return `<span class="badge badge-unknown">${status}</span>`;
     }
 
-    function getRecordsToExport() {
-      return selectedNCTs.size > 0 ? allData.filter(r => selectedNCTs.has(r.NCT)) : filteredData;
-    }
+    function getRecordsToExport() { return selectedNCTs.size > 0 ? allData.filter(r => selectedNCTs.has(r.NCT)) : filteredData; }
 
-    // ==================== CSV EXPORT ====================
     function exportCSV() {
       const dataToExport = getRecordsToExport();
       if (!dataToExport.length) { showToast('No data to export'); return; }
@@ -3071,7 +4381,6 @@
       showToast(`CSV exported (${dataToExport.length} trials)`);
     }
 
-    // ==================== PDF EXPORT ====================
     async function exportSelectedPDF() {
       if (selectedNCTs.size === 0) { showToast('Please select at least one study using the checkboxes in the table to export as PDF.', true); return; }
       const recordsToExport = allData.filter(d => selectedNCTs.has(d.NCT));
@@ -3082,109 +4391,36 @@
       try {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
-        const PW = 210, PH = 297, ML = 18, MR = 18, CW = PW - ML - MR;
-        let y = 0;
+        const PW = 210, PH = 297, ML = 18, MR = 18, CW = PW - ML - MR; let y = 0;
         const clean = s => (s || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
 
-        function checkPage(needed = 10) {
-          if (y + needed > PH - 15) {
-            doc.addPage(); y = 18; drawPageHeader();
-          }
-        }
-
-        function drawPageHeader() {
-          doc.setFillColor(37, 99, 235); doc.rect(0, 0, PW, 6, 'F');
-        }
-
-        function addSection(title) {
-          checkPage(14);
-          doc.setFillColor(239, 246, 255); doc.rect(ML, y, CW, 7, 'F');
-          doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(29, 78, 216);
-          doc.text(title.toUpperCase(), ML + 3, y + 5);
-          y += 10;
-        }
-
-        function addField(label, value) {
-          if (!value) return;
-          const text = clean(value);
-          checkPage(10);
-          doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(100, 116, 139);
-          doc.text(label.toUpperCase(), ML, y);
-          y += 4.5;
-          doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(15, 23, 42);
-          const lines = doc.splitTextToSize(text, CW); const lineH = 4.5;
-          lines.forEach(line => { checkPage(lineH + 2); doc.text(line, ML, y); y += lineH; });
-          y += 3;
-        }
-
-        function addFieldInline(label, value) {
-          if (!value) return;
-          checkPage(8);
-          doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(100, 116, 139);
-          doc.text(label.toUpperCase() + ':', ML, y);
-          doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(15, 23, 42);
-          const labelW = doc.getTextWidth(label.toUpperCase() + ': ') + 1;
-          const lines = doc.splitTextToSize(clean(value), CW - labelW);
-          doc.text(lines[0], ML + labelW, y);
-          y += 5;
-          if (lines.length > 1) {
-            lines.slice(1).forEach(l => { checkPage(5); doc.text(l, ML + labelW, y); y += 4.5; });
-          }
-        }
-
-        function addBulletList(items) {
-          items.filter(Boolean).forEach(item => {
-            const text = clean(item);
-            if (!text) return;
-            const lines = doc.splitTextToSize('• ' + text, CW - 4);
-            lines.forEach((line, li) => {
-              checkPage(5);
-              doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(51, 65, 85);
-              doc.text(line, ML + (li > 0 ? 4 : 0), y);
-              y += 4.5;
-            });
-          });
-          y += 2;
-        }
-
-        function addHRule() {
-          checkPage(6);
-          doc.setDrawColor(226, 232, 240); doc.setLineWidth(0.3); doc.line(ML, y, ML + CW, y);
-          y += 5;
-        }
+        function checkPage(needed = 10) { if (y + needed > PH - 15) { doc.addPage(); y = 18; drawPageHeader(); } }
+        function drawPageHeader() { doc.setFillColor(37, 99, 235); doc.rect(0, 0, PW, 6, 'F'); }
+        function addSection(title) { checkPage(14); doc.setFillColor(239, 246, 255); doc.rect(ML, y, CW, 7, 'F'); doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(29, 78, 216); doc.text(title.toUpperCase(), ML + 3, y + 5); y += 10; }
+        function addField(label, value) { if (!value) return; const text = clean(value); checkPage(10); doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(100, 116, 139); doc.text(label.toUpperCase(), ML, y); y += 4.5; doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(15, 23, 42); const lines = doc.splitTextToSize(text, CW); const lineH = 4.5; lines.forEach(line => { checkPage(lineH + 2); doc.text(line, ML, y); y += lineH; }); y += 3; }
+        function addFieldInline(label, value) { if (!value) return; checkPage(8); doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(100, 116, 139); doc.text(label.toUpperCase() + ':', ML, y); doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(15, 23, 42); const labelW = doc.getTextWidth(label.toUpperCase() + ': ') + 1; const lines = doc.splitTextToSize(clean(value), CW - labelW); doc.text(lines[0], ML + labelW, y); y += 5; if (lines.length > 1) { lines.slice(1).forEach(l => { checkPage(5); doc.text(l, ML + labelW, y); y += 4.5; }); } }
+        function addBulletList(items) { items.filter(Boolean).forEach(item => { const text = clean(item); if (!text) return; const lines = doc.splitTextToSize('• ' + text, CW - 4); lines.forEach((line, li) => { checkPage(5); doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(51, 65, 85); doc.text(line, ML + (li > 0 ? 4 : 0), y); y += 4.5; }); }); y += 2; }
+        function addHRule() { checkPage(6); doc.setDrawColor(226, 232, 240); doc.setLineWidth(0.3); doc.line(ML, y, ML + CW, y); y += 5; }
 
         for (let i = 0; i < recordsToExport.length; i++) {
-          const r = recordsToExport[i];
-          if (i > 0) doc.addPage();
+          const r = recordsToExport[i]; if (i > 0) doc.addPage();
           drawPageHeader(); y = 14;
           doc.setFont('helvetica', 'bold'); doc.setFontSize(7); doc.setTextColor(37, 99, 235); doc.text('Clinical Trial Explorer', PW - MR, y, { align: 'right' }); y += 1;
           doc.setFillColor(219, 234, 254); doc.roundedRect(ML, y, 40, 7, 2, 2, 'F'); doc.setFont('courier', 'bold'); doc.setFontSize(9); doc.setTextColor(29, 78, 216); doc.text(r.NCT, ML + 3, y + 5);
           const statusColors = { RECRUITING: [37, 99, 235], COMPLETED: [5, 150, 105], TERMINATED: [225, 29, 72], WITHDRAWN: [225, 29, 72], SUSPENDED: [245, 158, 11] };
-          const statusKey = Object.keys(statusColors).find(k => (r.Status || '').toUpperCase().includes(k)) || null;
-          const sc = statusKey ? statusColors[statusKey] : [100, 116, 139];
-          doc.setFillColor(sc[0], sc[1], sc[2]);
-          const statusLabel = (r.Status || 'UNKNOWN').toUpperCase();
-          const statusW = doc.getTextWidth(statusLabel) + 8;
-          doc.roundedRect(ML + 44, y, statusW, 7, 2, 2, 'F'); doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(255, 255, 255); doc.text(statusLabel, ML + 48, y + 5);
+          const statusKey = Object.keys(statusColors).find(k => (r.Status || '').toUpperCase().includes(k)) || null; const sc = statusKey ? statusColors[statusKey] : [100, 116, 139]; doc.setFillColor(sc[0], sc[1], sc[2]); const statusLabel = (r.Status || 'UNKNOWN').toUpperCase(); const statusW = doc.getTextWidth(statusLabel) + 8; doc.roundedRect(ML + 44, y, statusW, 7, 2, 2, 'F'); doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(255, 255, 255); doc.text(statusLabel, ML + 48, y + 5);
           if (r.Phase) { const phW = doc.getTextWidth(r.Phase) + 8; doc.setFillColor(245, 158, 11); doc.roundedRect(ML + 46 + statusW, y, phW, 7, 2, 2, 'F'); doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(255, 255, 255); doc.text(r.Phase, ML + 50 + statusW, y + 5); }
           y += 12;
-          const titleText = clean(r.OfficialTitle || r.Title);
-          doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(15, 23, 42);
-          const titleLines = doc.splitTextToSize(titleText, CW);
-          titleLines.forEach(line => { checkPage(7); doc.text(line, ML, y); y += 6.5; });
+          const titleText = clean(r.OfficialTitle || r.Title); doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(15, 23, 42); const titleLines = doc.splitTextToSize(titleText, CW); titleLines.forEach(line => { checkPage(7); doc.text(line, ML, y); y += 6.5; });
           if (r.OfficialTitle && r.OfficialTitle !== r.Title) { y += 2; doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(100, 116, 139); const briefLines = doc.splitTextToSize(clean(r.Title), CW); briefLines.forEach(line => { checkPage(5); doc.text(line, ML, y); y += 4.5; }); }
           y += 3; doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(37, 99, 235); doc.textWithLink(r.URL, ML, y, { url: r.URL }); y += 8;
-          addHRule();
-          addSection('Study Details');
+          addHRule(); addSection('Study Details');
           const detailPairs = [['Study Type', r['Study Type']], ['Enrollment', r.Enrollment ? r.Enrollment + ' participants' : ''], ['Start Date', r['Start Date']], ['Primary Completion', r['Primary Completion']], ['Study Completion', r['Study Completion']], ['Sponsor', r.Sponsor], ['Principal Investigator', r.PI], ['Keyword', r.Keyword], ['Allocation', r.Allocation], ['Masking', r.Masking], ['Primary Purpose', r['Primary Purpose']], ['Intervention Model', r['Intervention Model']]].filter(([, v]) => v);
           const colW2 = (CW - 6) / 2;
           for (let j = 0; j < detailPairs.length; j += 2) {
-            const [la, va] = detailPairs[j]; const [lb, vb] = detailPairs[j + 1] || [];
-            checkPage(14); const startY = y;
-            doc.setFont('helvetica', 'bold'); doc.setFontSize(7); doc.setTextColor(100, 116, 139); doc.text(la.toUpperCase(), ML, y); doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(15, 23, 42);
-            const linesA = doc.splitTextToSize(clean(va), colW2); linesA.forEach((line, li) => { doc.text(line, ML, y + 4 + li * 4); });
-            let linesB = [];
-            if (lb && vb) { doc.setFont('helvetica', 'bold'); doc.setFontSize(7); doc.setTextColor(100, 116, 139); doc.text(lb.toUpperCase(), ML + colW2 + 6, startY); doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(15, 23, 42); linesB = doc.splitTextToSize(clean(vb), colW2); linesB.forEach((line, li) => { doc.text(line, ML + colW2 + 6, startY + 4 + li * 4); }); }
+            const [la, va] = detailPairs[j]; const [lb, vb] = detailPairs[j + 1] || []; checkPage(14); const startY = y;
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(7); doc.setTextColor(100, 116, 139); doc.text(la.toUpperCase(), ML, y); doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(15, 23, 42); const linesA = doc.splitTextToSize(clean(va), colW2); linesA.forEach((line, li) => { doc.text(line, ML, y + 4 + li * 4); });
+            let linesB = []; if (lb && vb) { doc.setFont('helvetica', 'bold'); doc.setFontSize(7); doc.setTextColor(100, 116, 139); doc.text(lb.toUpperCase(), ML + colW2 + 6, startY); doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(15, 23, 42); linesB = doc.splitTextToSize(clean(vb), colW2); linesB.forEach((line, li) => { doc.text(line, ML + colW2 + 6, startY + 4 + li * 4); }); }
             y += 4 + Math.max(linesA.length, linesB.length, 1) * 4 + 4;
           }
           y += 2;
@@ -3212,19 +4448,11 @@
           doc.text(`Generated by Clinical Trial Explorer · ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}`, ML, PH - 3.5);
           doc.text(`Page ${pg} of ${totalPages}`, PW - MR, PH - 3.5, { align: 'right' });
         }
-
         const filename = recordsToExport.length === 1 ? `Clinical_Trial_${recordsToExport[0].NCT}.pdf` : `Clinical_Trials_Export_${recordsToExport.length}_studies.pdf`;
-        doc.save(filename);
-        showToast(`✓ PDF exported: ${recordsToExport.length} studies`);
-      } catch (err) {
-        console.error('PDF generation error:', err);
-        showToast('PDF generation failed. See console.', true);
-      } finally {
-        document.getElementById('pdfLoaderOverlay').classList.remove('visible');
-      }
+        doc.save(filename); showToast(`✓ PDF exported: ${recordsToExport.length} studies`);
+      } catch (err) { console.error('PDF generation error:', err); showToast('PDF generation failed. See console.', true); } finally { document.getElementById('pdfLoaderOverlay').classList.remove('visible'); }
     }
 
-    // ==================== UI HELPERS ====================
     function showLoader(kw) { document.getElementById('loaderKeyword').textContent = kw; document.getElementById('loaderOverlay').classList.add('visible'); }
     function hideLoader() { document.getElementById('loaderOverlay').classList.remove('visible'); }
     let toastTimer;
@@ -3234,12 +4462,10 @@
       t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
     }
 
-    // Initialization
     window.addEventListener('DOMContentLoaded', () => {
       initViewPicker();
+      loadSearchHistory();
     });
-
-    // Reposition tooltips on resize
     window.addEventListener('resize', () => { if (dataMinYear && dataMaxYear) updateYearRange(); });
   </script>
 </body>
